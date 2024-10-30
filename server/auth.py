@@ -13,7 +13,7 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
     if credentials.username != correct_username or sha256_encode(credentials.password) != correct_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Basic"},
         )
     return credentials.username
