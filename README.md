@@ -13,11 +13,6 @@ sh upload.sh
 linux：export needle_pwd="your_pwd"
 IDE配置：Configuration->Enviroment->Environment variables中添加needle_pwd=your_pwd
 ```
-修改配置文件res/prod/application.yml
-```
-username: basic_auth username
-password: basic_auth password加密后的值。 加密代码使用：security/security.py sha256_encode函数
-```
 
 The app will be running on http://0.0.0.0:8471
 ```sh
