@@ -5,6 +5,7 @@ from sqlalchemy.ext.declarative import declared_attr
 # 创建一个基类，用于定义表结构
 Base = declarative_base()
 
+
 # 定义一个通用的数据表类
 class BaseModel(Base):
     __abstract__ = True
@@ -14,6 +15,7 @@ class BaseModel(Base):
         return cls.__name__.lower()
 
     id = Column(Integer, primary_key=True)
+
 
 # 封装数据库连接类
 class Database:
@@ -56,6 +58,7 @@ class Database:
             self.session.delete(record)
             self.session.commit()
 
+
 # 定义全局变量 db_url
 db_url = 'sqlite:///res/example.db'
 
@@ -73,6 +76,7 @@ if __name__ == "__main__":
     class Product(BaseModel):
         name = Column(String)
         price = Column(Integer)
+
 
     with db:
         db.create_tables(User, Product)  # 创建表结构

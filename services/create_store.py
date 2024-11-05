@@ -9,5 +9,5 @@ class CreateStoreEntity(BaseModel):
     seperator: str
 
 
-def create_store(body):
+def create_store(body, tasks):
     pass
