@@ -1,5 +1,5 @@
 import uvicorn
-from utils import config
+from utils.config import config
 from fastapi import FastAPI
 from .store_router import store_router
 from fastapi.middleware.cors import CORSMiddleware
