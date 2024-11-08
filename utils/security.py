@@ -53,5 +53,5 @@ if __name__ == '__main__':
     plain_text = decrypt(cipher_text)
     print(plain_text)
 
-    hash_value = sha256_encode("needle")  # Replace it with the text you need to encode
+    hash_value = sha256_encode('needle')  # Replace it with the text you need to encode
     print(hash_value)

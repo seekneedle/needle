@@ -9,8 +9,8 @@ security = HTTPBearer()
 
 # 获取Authorization
 def authenticate(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if credentials.scheme != "Bearer":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication scheme.")
+    if credentials.scheme != 'Bearer':
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid authentication scheme.')
     return credentials.credentials
 
 

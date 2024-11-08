@@ -33,6 +33,8 @@ class CreateStoreTask(TableModel):
 
 
 def _create_store(request: CreateStoreEntity, task_id: str):
+    task = CreateStoreTask(task_id=task_id, status='running')
+    task.save()
     # 1. 新增类目
     workspace_id = decrypt(config['workspace_id'])
     category_name = request.name
@@ -50,19 +52,18 @@ def _create_store(request: CreateStoreEntity, task_id: str):
         result = client.add_category_with_options(workspace_id, add_category_request, headers, runtime)
     except Exception as e:
         trace_info = traceback.format_exc()
-        log.error(f"Exception for _create_store/add_category, e: {e}, trace: {trace_info}")
-        with db:
-            db.update_records(CreateStoreTask, task_id=task_id, values=values(status='fail', modify_time=func.now()))
-    print("done")
+        log.error(f'Exception for _create_store/add_category, e: {e}, trace: {trace_info}')
+        task.status = 'fail'
+        task.modify_time = func.now()
+        task.save()
+    print('done')
 
 
 def create_store(request: CreateStoreEntity, background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
-    with db:
-        db.add_record(CreateStoreTask, task_id=task_id, status='running')
     background_tasks.add_task(_create_store, request, task_id=task_id)
     return task_id
 
 
 if __name__ == '__main__':
-    _create_store(CreateStoreEntity(name="test", chunking_size=0, overlap=0,seperator='',files=[]), 'aaa')
+    _create_store(CreateStoreEntity(name='test', chunking_size=0, overlap=0,seperator='',files=[]), 'aaa')

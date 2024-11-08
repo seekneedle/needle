@@ -14,8 +14,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=config['origins'],  # 允许的来源
     allow_credentials=True,  # 是否允许凭证传输，如cookies等敏感信息
-    allow_methods=["*"],     # 允许的方法，默认为["GET"]
-    allow_headers=["*"],     # 允许的头部，默认为空列表
+    allow_methods=['*'],     # 允许的方法，默认为['GET']
+    allow_headers=['*'],     # 允许的头部，默认为空列表
 )
 
 
