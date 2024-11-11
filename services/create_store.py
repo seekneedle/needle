@@ -1,7 +1,7 @@
 import uuid
 from pydantic import BaseModel
 from fastapi import BackgroundTasks
-from data.database import db, TableModel, values
+from data.database import TableModel
 from sqlalchemy import Column, String, DateTime, func
 from utils.config import config
 from utils.security import decrypt
