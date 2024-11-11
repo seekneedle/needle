@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 import traceback
 from utils.log import log
 from services.create_store import create_store, CreateStoreEntity
-from .auth import authenticate, check_permission
-from .response import SuccessResponse, FailResponse
+from server.auth import authenticate, check_permission
+from server.response import SuccessResponse, FailResponse
 
 store_router = APIRouter(prefix='/vector_store')
 

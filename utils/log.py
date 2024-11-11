@@ -3,13 +3,11 @@ from sqlalchemy import Column, Integer, String
 import logging
 import os
 from datetime import datetime
-from .config import config
+from utils.config import config
 
 
 # 定义日志模型
 class LogEntry(TableModel):
-    __tablename__ = 'log_entries'
-
     id = Column(Integer, primary_key=True, autoincrement=True)
     level = Column(String)
     message = Column(String)

@@ -1,7 +1,7 @@
 from alibabacloud_bailian20231229.client import Client as bailian20231229Client
 from alibabacloud_tea_openapi import models as open_api_models
-from .security import decrypt
-from .config import config
+from utils.security import decrypt
+from utils.config import config
 
 
 def create_client() -> bailian20231229Client:
