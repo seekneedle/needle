@@ -3,7 +3,6 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.ext.declarative import declared_attr, DeclarativeMeta
 from contextlib import contextmanager
 import traceback
-from utils.log import log
 
 # 创建一个基类，用于定义表结构
 Base = declarative_base()
@@ -22,7 +21,7 @@ def session_scope():
     except Exception as e:
         _session.rollback()
         trace_info = traceback.format_exc()
-        log.error(f'Exception for session_scope, e: {e}, trace: {trace_info}')
+        print(f'Exception for session_scope, e: {e}, trace: {trace_info}')
     finally:
         _session.close()
 
@@ -45,7 +44,7 @@ class TableModel(Base, metaclass=AutoCreateTableMeta):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    def get(self):
+    def load(self):
         with session_scope() as session:
             # 获取模型的所有列
             columns = inspect(self.__class__).columns
@@ -58,6 +57,18 @@ class TableModel(Base, metaclass=AutoCreateTableMeta):
                 # 更新 get_user 的所有列
                 for column in columns:
                     setattr(self, column.name, getattr(result, column.name))
+
+    def iter(self):
+        with session_scope() as session:
+            # 获取模型的所有列
+            columns = inspect(self.__class__).columns
+            # 构建查询条件
+            filters = {column.name: getattr(self, column.name) for column in columns if
+                       getattr(self, column.name) is not None}
+            # 执行查询
+            results = session.query(self.__class__).filter_by(**filters).all()
+            for result in results:
+                yield result
 
     def save(self):
         with session_scope() as session:
@@ -83,62 +94,35 @@ if __name__ == '__main__':
     user = User(name='a')
     user.save()
 
-    print(user.id)
-    print(user.name)
+    print(f'save {user.id}, name = {user.name}')
 
     user.name = 'b'
     user.save()
 
-    print(user.id)
-    print(user.name)
+    print(f'update {user.id}, name = {user.name}')
 
-    with session_scope() as query_session:
-        user1 = query_session.query(User).filter_by(id=1).first()
-        if user1:
-            print('first user')
-            print(user1.id)
-            print(user1.name)
-        user2 = query_session.query(User).filter_by(id=2).first()
-        if user2:
-            print('second user')
-            print(user2.id)
-            print(user2.name)
+    query_users = User()
+    for query_user in query_users.iter():
+        print(f'query {query_user.id}, name = {query_user.name}')
 
     get_user = User(name='b')
-    get_user.get()
-    print('get_user:')
-    print(get_user.id)
-    print(get_user.name)
+    get_user.load()
+
+    print(f'get {user.id}, name = {user.name}')
 
     get_user.name = 'c'
     get_user.save()
-    print(get_user.id)
-    print(get_user.name)
 
-    with session_scope() as query_session:
-        user1 = query_session.query(User).filter_by(id=1).first()
-        if user1:
-            print('first user')
-            print(user1.id)
-            print(user1.name)
-        user2 = query_session.query(User).filter_by(id=2).first()
-        if user2:
-            print('second user')
-            print(user2.id)
-            print(user2.name)
+    print(f'update {user.id}, name = {user.name}')
+
+    query_users = User()
+    for query_user in query_users.iter():
+        print(f'query {query_user.id}, name = {query_user.name}')
 
     get_user.delete()
 
-    print('删除user')
-
-    with session_scope() as query_session:
-        user1 = query_session.query(User).filter_by(id=1).first()
-        if user1:
-            print('first user')
-            print(user1.id)
-            print(user1.name)
-        user2 = query_session.query(User).filter_by(id=2).first()
-        if user2:
-            print('second user')
-            print(user2.id)
-            print(user2.name)
+    query_users = User()
+    for query_user in query_users.iter():
+        print(f'delete {query_user.id}, name = {query_user.name}')
+    else:
+        print(f'delete all')
