@@ -4,6 +4,7 @@ from utils.log import log
 from services.create_store import create_store, CreateStoreEntity
 from server.auth import authenticate, check_permission
 from server.response import SuccessResponse, FailResponse
+from data.task import TaskEntry
 
 store_router = APIRouter(prefix='/vector_store')
 
@@ -26,4 +27,27 @@ async def vector_store_create(request: CreateStoreEntity, background_tasks: Back
     except Exception as e:
         trace_info = traceback.format_exc()
         log.error(f'Exception for /vector_store/create, e: {e}, trace: {trace_info}')
+        return FailResponse(data={'error': e})
+
+# 2. 查询任务状态
+@store_router.get('/task_status/{task_id}')
+async def get_task_status(task_id: str):#, token: str = Depends(authenticate)):
+    """
+        查询任务状态：根据任务ID获取任务的当前状态。
+    """
+    try:
+        #if not check_permission(token, 'task'):
+        #    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
+        
+        task_entry = TaskEntry.get_task_info(task_id=task_id)
+        if not task_entry:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Task not found.')
+
+        return SuccessResponse(data={
+            'task_id': task_entry.task_id,
+            'status': task_entry.status
+        })
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /vector_store/task_status/{task_id}, e: {e}, trace: {trace_info}')
         return FailResponse(data={'error': e})

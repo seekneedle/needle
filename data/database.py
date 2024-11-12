@@ -44,6 +44,15 @@ class TableModel(Base, metaclass=AutoCreateTableMeta):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
+    @classmethod
+    def query_by_column_value(cls, column_name, value):
+        """
+        Query the database for the first entry matching a specific column value.
+        Returns the first matching instance or None if not found.
+        """
+        with session_scope() as session:
+            return session.query(cls).filter(getattr(cls, column_name) == value).first()
+        
     def load(self):
         with session_scope() as session:
             # 获取模型的所有列
@@ -89,7 +98,7 @@ class TableModel(Base, metaclass=AutoCreateTableMeta):
 if __name__ == '__main__':
     class User(TableModel):
         name = Column(String)
-
+    
 
     user = User(name='a')
     user.save()
