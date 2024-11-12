@@ -22,9 +22,9 @@ class File(BaseModel):
 
 class CreateStoreEntity(BaseModel):
     name: str
-    chunking_size: int
-    overlap: int
-    seperator: str
+    chunk_size: int = None
+    overlap_size: int = None
+    separator: str = None
     files: list[File]
 
 
@@ -115,8 +115,8 @@ def _create_store(request: CreateStoreEntity, task_id: str):
     # 动态添加可选参数
     if request.chunk_size:
         params['chunk_size'] = request.chunk_size
-    if request.overlap:
-        params['overlap_size'] = request.overlap
+    if request.overlap_size:
+        params['overlap_size'] = request.overlap_size
     if request.separator:
         params['separator'] = request.separator
     create_index_request = bailian_20231229_models.CreateIndexRequest(
@@ -189,4 +189,4 @@ if __name__ == '__main__':
                   'aaa')
     tasks = TaskEntry(task_id='aaa')
     for task in tasks.iter():
-        print(f'id: {task.id}, status: {task.status}')
+        print(f'id: {task.id}, status: {task.status}, create_time: {task.create_time}, modify_time: {task.modify_time}')
