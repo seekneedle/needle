@@ -5,8 +5,9 @@ from sqlalchemy import Column, String, DateTime, text
 
 class TaskStatus:
     RUNNING = 'RUNNING'
-    SUCCESS = 'SUCCESS'
-    FAIL = 'FAIL'
+    COMPLETED = 'COMPLETED'
+    FAILED = 'FAILED'
+    PENDING = 'PENDING'
 
 
 class TaskEntry(TableModel):

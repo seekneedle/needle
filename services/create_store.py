@@ -1,3 +1,4 @@
+import time
 import uuid
 from pydantic import BaseModel
 from fastapi import BackgroundTasks
@@ -50,8 +51,8 @@ def _create_store(request: CreateStoreEntity, task_id: str):
         category_id = result.body.data.category_id
     except Exception as e:
         trace_info = traceback.format_exc()
-        log.error(f'Exception for _create_store/add_category, e: {e}, trace: {trace_info}')
-        task.set_status(TaskStatus.FAIL)
+        log.error(f'Exception for _create_store/add_category, task_id: {task_id},  e: {e}, trace: {trace_info}')
+        task.set_status(TaskStatus.FAILED)
         return
     # 2. 上传文件
     for file in request.files:
@@ -77,15 +78,15 @@ def _create_store(request: CreateStoreEntity, task_id: str):
             upload_file_headers = result.body.data.param.headers
         except Exception as e:
             trace_info = traceback.format_exc()
-            log.error(f'Exception for _create_store/add_lease, e: {e}, trace: {trace_info}')
-            task.set_status(TaskStatus.FAIL)
+            log.error(f'Exception for _create_store/add_lease, task_id: {task_id}, e: {e}, trace: {trace_info}')
+            task.set_status(TaskStatus.FAILED)
             return
         # 2.2. 上传文件
         file_content = read_file(file_path)
         response = requests.put(url, data=file_content, headers=upload_file_headers)
         if not response or response.status_code != 200 or not response.ok:
             log.error(f'Exception for _create_store/put_file')
-            task.set_status(TaskStatus.FAIL)
+            task.set_status(TaskStatus.FAILED)
             return
         # 2.3. 添加文档
         add_file_request = bailian_20231229_models.AddFileRequest(
@@ -99,10 +100,77 @@ def _create_store(request: CreateStoreEntity, task_id: str):
                 raise RuntimeError(result.body)
         except Exception as e:
             trace_info = traceback.format_exc()
-            log.error(f'Exception for _create_store/add_file, e: {e}, trace: {trace_info}')
-            task.set_status(TaskStatus.FAIL)
+            log.error(f'Exception for _create_store/add_file, task_id: {task_id}, e: {e}, trace: {trace_info}')
+            task.set_status(TaskStatus.FAILED)
             return
     # 3. 创建知识库索引
+    # 初始化参数字典
+    params = {
+        'sink_type': 'DEFAULT',
+        'name': request.name,
+        'structure_type': 'unstructured',
+        'source_type': 'DATA_CENTER_CATEGORY',
+        'category_ids': [category_id]
+    }
+    # 动态添加可选参数
+    if request.chunk_size:
+        params['chunk_size'] = request.chunk_size
+    if request.overlap:
+        params['overlap_size'] = request.overlap
+    if request.separator:
+        params['separator'] = request.separator
+    create_index_request = bailian_20231229_models.CreateIndexRequest(
+        **params
+    )
+    try:
+        result = client.create_index_with_options(workspace_id, create_index_request, headers, runtime)
+        if result.status_code != 200 or not result.body.success:
+            raise RuntimeError(result.body)
+        index_id = result.body.data.id
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for _create_store/add_index, task_id: {task_id}, e: {e}, trace: {trace_info}')
+        task.set_status(TaskStatus.FAILED)
+        return
+    # 4. 提交索引创建任务
+    submit_index_job_request = bailian_20231229_models.SubmitIndexJobRequest(
+        index_id=index_id
+    )
+    try:
+        result = client.submit_index_job_with_options(workspace_id, submit_index_job_request, headers, runtime)
+        if result.status_code != 200 or not result.body.success:
+            raise RuntimeError(result.body)
+        job_id = result.body.data.id
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for _create_store/submit_index, task_id: {task_id}, e: {e}, trace: {trace_info}')
+        task.set_status(TaskStatus.FAILED)
+        return
+    # 5. 查询索引创建任务状态
+    for i in range(10):
+        get_index_job_status_request = bailian_20231229_models.GetIndexJobStatusRequest(
+            job_id=job_id,
+            index_id=index_id
+        )
+        try:
+            result = client.get_index_job_status_with_options(workspace_id, get_index_job_status_request, headers, runtime)
+            if result.status_code != 200 or not result.body.success:
+                raise RuntimeError(result.body)
+            status = result.body.data.status
+        except Exception as e:
+            trace_info = traceback.format_exc()
+            log.error(f'Exception for _create_store/submit_index, task_id: {task_id}, e: {e}, trace: {trace_info}')
+            task.set_status(TaskStatus.FAILED)
+            return
+        if status == TaskStatus.FAILED:
+            log.error(f'Exception for _create_store/submit_index, task_id: {task_id}, docs: '
+                      f'{result.body.data.documents}')
+            task.set_status(TaskStatus.FAILED)
+            return
+        if status == TaskStatus.COMPLETED:
+            task.set_status(TaskStatus.COMPLETED)
+            return
+        time.sleep(6)
 
 
 def create_store(request: CreateStoreEntity, background_tasks: BackgroundTasks):
@@ -112,7 +180,13 @@ def create_store(request: CreateStoreEntity, background_tasks: BackgroundTasks):
 
 
 if __name__ == '__main__':
-    _create_store(CreateStoreEntity(name='test', chunking_size=0, overlap=0, seperator='', files=[File(
+    tasks = TaskEntry(task_id='aaa')
+    for task in tasks.iter():
+        task.delete()
+    _create_store(CreateStoreEntity(name='test', files=[File(
         name='server.txt',
         file_base64='MjAyNC0xMS0xMSAwOTo1MzoxMCw0OTkgLSBJTkZPIC0gdGVzdAoyMDI0LTExLTExIDE1OjE2OjMxLDAxMCAtIElORk8gLSB0ZXN0Cg==')]),
                   'aaa')
+    tasks = TaskEntry(task_id='aaa')
+    for task in tasks.iter():
+        print(f'id: {task.id}, status: {task.status}')
