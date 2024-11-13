@@ -13,6 +13,8 @@ from data.task import TaskEntry, TaskStatus
 from utils.files_utils import save_file_to_index_path, calculate_md5, read_file
 import os
 import requests
+from data.store import CreateStoreEntity, CreateStoreDocumentEntity
+from typing import List, Optional
 
 
 class File(BaseModel):
@@ -20,17 +22,23 @@ class File(BaseModel):
     file_base64: str
 
 
-class CreateStoreEntity(BaseModel):
+class CreateStoreRequest(BaseModel):
     name: str
-    chunk_size: int = None
-    overlap_size: int = None
-    separator: str = None
-    files: list[File]
+    chunk_size: Optional[int] = None
+    overlap_size: Optional[int] = None
+    separator: Optional[str] = None
+    files: Optional[List[File]] = None
 
 
-def _create_store(request: CreateStoreEntity, task_id: str):
+class CreateStoreResponse(BaseModel):
+    task_id: str
+
+
+def _create_store(request: CreateStoreRequest, task_id: str):
     task = TaskEntry(task_id=task_id)
     task.set_status(TaskStatus.RUNNING)
+    store = CreateStoreEntity(task_id=task_id)
+    store.save()
     workspace_id = decrypt(config['workspace_id'])
     runtime = util_models.RuntimeOptions()
     headers = {}
@@ -53,56 +61,65 @@ def _create_store(request: CreateStoreEntity, task_id: str):
         trace_info = traceback.format_exc()
         log.error(f'Exception for _create_store/add_category, task_id: {task_id},  e: {e}, trace: {trace_info}')
         task.set_status(TaskStatus.FAILED)
+        store.message = str(e)
+        store.save()
         return
     # 2. 上传文件
-    for file in request.files:
-        # 2.1. 申请文档上传租约
-        file_name = file.name
-        file_path = save_file_to_index_path(task_id, file_name, file.file_base64)
-        md_5 = calculate_md5(file_path)
-        size_in_bytes = str(os.path.getsize(file_path))
-        apply_file_upload_lease_request = bailian_20231229_models.ApplyFileUploadLeaseRequest(
-            file_name=file_name,
-            md_5=md_5,
-            size_in_bytes=size_in_bytes
-        )
-        try:
-            result = client.apply_file_upload_lease_with_options(category_id, workspace_id,
-                                                              apply_file_upload_lease_request,
-                                                        headers,
-                                                        runtime)
-            if result.status_code != 200 or not result.body.success:
-                raise RuntimeError(result.body)
-            lease_id = result.body.data.file_upload_lease_id
-            url = result.body.data.param.url
-            upload_file_headers = result.body.data.param.headers
-        except Exception as e:
-            trace_info = traceback.format_exc()
-            log.error(f'Exception for _create_store/add_lease, task_id: {task_id}, e: {e}, trace: {trace_info}')
-            task.set_status(TaskStatus.FAILED)
-            return
-        # 2.2. 上传文件
-        file_content = read_file(file_path)
-        response = requests.put(url, data=file_content, headers=upload_file_headers)
-        if not response or response.status_code != 200 or not response.ok:
-            log.error(f'Exception for _create_store/put_file')
-            task.set_status(TaskStatus.FAILED)
-            return
-        # 2.3. 添加文档
-        add_file_request = bailian_20231229_models.AddFileRequest(
-            lease_id=lease_id,
-            parser='DASHSCOPE_DOCMIND',
-            category_id=category_id
-        )
-        try:
-            result = client.add_file_with_options(workspace_id, add_file_request, headers, runtime)
-            if result.status_code != 200 or not result.body.success:
-                raise RuntimeError(result.body)
-        except Exception as e:
-            trace_info = traceback.format_exc()
-            log.error(f'Exception for _create_store/add_file, task_id: {task_id}, e: {e}, trace: {trace_info}')
-            task.set_status(TaskStatus.FAILED)
-            return
+    if request.files:
+        for file in request.files:
+            # 2.1. 申请文档上传租约
+            file_name = file.name
+            file_path = save_file_to_index_path(task_id, file_name, file.file_base64)
+            md_5 = calculate_md5(file_path)
+            size_in_bytes = str(os.path.getsize(file_path))
+            apply_file_upload_lease_request = bailian_20231229_models.ApplyFileUploadLeaseRequest(
+                file_name=file_name,
+                md_5=md_5,
+                size_in_bytes=size_in_bytes
+            )
+            try:
+                result = client.apply_file_upload_lease_with_options(category_id, workspace_id,
+                                                                  apply_file_upload_lease_request,
+                                                            headers,
+                                                            runtime)
+                if result.status_code != 200 or not result.body.success:
+                    raise RuntimeError(result.body)
+                lease_id = result.body.data.file_upload_lease_id
+                url = result.body.data.param.url
+                upload_file_headers = result.body.data.param.headers
+            except Exception as e:
+                trace_info = traceback.format_exc()
+                log.error(f'Exception for _create_store/add_lease, task_id: {task_id}, e: {e}, trace: {trace_info}')
+                task.set_status(TaskStatus.FAILED)
+                store.message = str(e)
+                store.save()
+                return
+            # 2.2. 上传文件
+            file_content = read_file(file_path)
+            response = requests.put(url, data=file_content, headers=upload_file_headers)
+            if not response or response.status_code != 200 or not response.ok:
+                log.error('Exception for _create_store/put_file')
+                task.set_status(TaskStatus.FAILED)
+                store.message = 'Exception for _create_store/put_file'
+                store.save()
+                return
+            # 2.3. 添加文档
+            add_file_request = bailian_20231229_models.AddFileRequest(
+                lease_id=lease_id,
+                parser='DASHSCOPE_DOCMIND',
+                category_id=category_id
+            )
+            try:
+                result = client.add_file_with_options(workspace_id, add_file_request, headers, runtime)
+                if result.status_code != 200 or not result.body.success:
+                    raise RuntimeError(result.body)
+            except Exception as e:
+                trace_info = traceback.format_exc()
+                log.error(f'Exception for _create_store/add_file, task_id: {task_id}, e: {e}, trace: {trace_info}')
+                task.set_status(TaskStatus.FAILED)
+                store.message = str(e)
+                store.save()
+                return
     # 3. 创建知识库索引
     # 初始化参数字典
     params = {
@@ -127,10 +144,14 @@ def _create_store(request: CreateStoreEntity, task_id: str):
         if result.status_code != 200 or not result.body.success:
             raise RuntimeError(result.body)
         index_id = result.body.data.id
+        store.index_id = index_id
+        store.save()
     except Exception as e:
         trace_info = traceback.format_exc()
         log.error(f'Exception for _create_store/add_index, task_id: {task_id}, e: {e}, trace: {trace_info}')
         task.set_status(TaskStatus.FAILED)
+        store.message = str(e)
+        store.save()
         return
     # 4. 提交索引创建任务
     submit_index_job_request = bailian_20231229_models.SubmitIndexJobRequest(
@@ -145,6 +166,8 @@ def _create_store(request: CreateStoreEntity, task_id: str):
         trace_info = traceback.format_exc()
         log.error(f'Exception for _create_store/submit_index, task_id: {task_id}, e: {e}, trace: {trace_info}')
         task.set_status(TaskStatus.FAILED)
+        store.message = str(e)
+        store.save()
         return
     # 5. 查询索引创建任务状态
     for i in range(10):
@@ -161,32 +184,52 @@ def _create_store(request: CreateStoreEntity, task_id: str):
             trace_info = traceback.format_exc()
             log.error(f'Exception for _create_store/submit_index, task_id: {task_id}, e: {e}, trace: {trace_info}')
             task.set_status(TaskStatus.FAILED)
+            store.message = str(e)
+            store.save()
             return
         if status == TaskStatus.FAILED:
             log.error(f'Exception for _create_store/submit_index, task_id: {task_id}, docs: '
                       f'{result.body.data.documents}')
             task.set_status(TaskStatus.FAILED)
+            store.message = result.body.message
+            store.save()
             return
         if status == TaskStatus.COMPLETED:
             task.set_status(TaskStatus.COMPLETED)
+            for document in result.body.data.documents:
+                doc = CreateStoreDocumentEntity(task_id=task_id, doc_name=document.doc_name,
+                                                doc_id=document.doc_id, status=document.status)
+                doc.save()
             return
         time.sleep(6)
 
 
-def create_store(request: CreateStoreEntity, background_tasks: BackgroundTasks):
+def create_store(request: CreateStoreRequest, background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
     background_tasks.add_task(_create_store, request, task_id=task_id)
-    return task_id
+    return CreateStoreResponse(task_id=task_id)
 
 
 if __name__ == '__main__':
     tasks = TaskEntry(task_id='aaa')
     for task in tasks.iter():
         task.delete()
-    _create_store(CreateStoreEntity(name='test', files=[File(
+    stores = CreateStoreEntity(task_id='aaa')
+    for store in stores.iter():
+        store.delete()
+    documents = CreateStoreDocumentEntity(task_id='aaa')
+    for doc in documents.iter():
+        doc.delete()
+    _create_store(CreateStoreRequest(name='test', files=[File(
         name='server.txt',
         file_base64='MjAyNC0xMS0xMSAwOTo1MzoxMCw0OTkgLSBJTkZPIC0gdGVzdAoyMDI0LTExLTExIDE1OjE2OjMxLDAxMCAtIElORk8gLSB0ZXN0Cg==')]),
                   'aaa')
     tasks = TaskEntry(task_id='aaa')
     for task in tasks.iter():
         print(f'id: {task.id}, status: {task.status}, create_time: {task.create_time}, modify_time: {task.modify_time}')
+    stores = CreateStoreEntity(task_id='aaa')
+    for store in stores.iter():
+        print(f'id: {store.id}, index_id: {store.index_id}, message: {store.message}')
+    documents = CreateStoreDocumentEntity(task_id='aaa')
+    for doc in documents.iter():
+        print(f'id: {doc.id}, doc_name: {doc.doc_name}, doc_id: {doc.doc_id}, status: {doc.status}')

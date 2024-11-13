@@ -1,4 +1,3 @@
-
 from data.database import TableModel
 from sqlalchemy import Column, String, DateTime, text
 
