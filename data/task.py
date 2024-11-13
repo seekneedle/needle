@@ -23,9 +23,8 @@ class TaskEntry(TableModel):
     def get_task_info(cls, task_id):
         """
         Retrieve task information based on task_id.
-        Returns a dictionary containing task_id and status if found.
+        Returns a TaskEntry object or None if not found.
         """
-        task_entry = cls.query_by_column_value('task_id', task_id)
-        if task_entry:
-            return task_entry
-        return None  # Return None if no task is found
+        return cls.query_by_column_value('task_id', task_id)
+
+

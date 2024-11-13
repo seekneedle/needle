@@ -22,11 +22,11 @@ def before_all(context):
     Base.metadata.create_all(engine)
 
     # Start the FastAPI app in a separate thread
-    context.server_thread = threading.Thread(target=run_app)
-    context.server_thread.start()
+    #context.server_thread = threading.Thread(target=run_app)
+    #context.server_thread.start()
 
     # Give the server a moment to start
-    time.sleep(2)
+    #time.sleep(2)
     # Setup the application
     context.client = TestClient(app) 
     
@@ -79,4 +79,4 @@ def after_all(context):
     # Drop the database tables
     Base.metadata.drop_all(engine)
 
-    context.server_thread.join(timeout=1) 
+    #context.server_thread.join(timeout=1) 
