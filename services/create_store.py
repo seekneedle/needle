@@ -15,11 +15,9 @@ import os
 import requests
 from data.store import CreateStoreEntity, CreateStoreDocumentEntity
 from typing import List, Optional
+from utils.files_utils import File
 
 
-class File(BaseModel):
-    name: str
-    file_base64: str
 
 
 class CreateStoreRequest(BaseModel):
