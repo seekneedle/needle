@@ -123,7 +123,7 @@ def upload_file(client, category_id: str, workspace_id: str, task_id: str, file:
     - file: 要上传的文件对象，包含文件名和Base64编码的内容。
 
     返回:
-    - 成功上传并添加文档后返回 (True, None)。
+    - 成功上传并添加文档后返回 (True, FileId)。
     - 如果任一步骤失败，则返回 (False, error_message)。
     """
     # 1. 申请文档上传租约
@@ -171,7 +171,7 @@ def upload_file(client, category_id: str, workspace_id: str, task_id: str, file:
         log.error(f'Exception for upload_file/add_file, task_id: {task_id}, e: {e}, trace: {trace_info}')
         return False, str(e)
 
-    return True, None
+    return True, result.body.data.file_id
     
 if __name__ == '__main__':
     file_path = 'output/server.log'

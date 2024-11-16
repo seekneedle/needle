@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 import traceback
+
+from services.file_add import FileAddRequest
 from utils.log import log
 from utils.config import config
 from services.create_store import create_store, CreateStoreRequest
@@ -51,8 +53,25 @@ async def get_task_status(task_id: str, token: str = Depends(
         log.error(f'Exception for /vector_store/task_status, task_id:{task_id} , e: {e}, trace: {trace_info}')
         return FailResponse(error=str(e))
 
+# 3. 向知识库增加文件
+@store_router.post('/file/add')
+async def file_add(request: FileAddRequest, background_tasks: BackgroundTasks, token: str = Depends(
+    get_token)):
+    """
+        向知识库里添加文件：支持pdf、docx、doc、txt、md文件上传，切分。
+    """
+    try:
+        if not check_permission(token, PERMISSION_MANAGE):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
 
-# 3. 知识召回
+        file_add_response = file_add(request, background_tasks)
+        return SuccessResponse(data=file_add_response)
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /vector_store/file_add, e: {e}, trace: {trace_info}')
+        return FailResponse(error=str(e))
+
+# 4. 知识召回
 @store_router.post('/retrieve')
 async def vector_store_retrieve(request: RetrieveRequest, token: str = Depends(
     get_token)):
