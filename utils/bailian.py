@@ -17,3 +17,7 @@ def create_client() -> bailian20231229Client:
     # Endpoint 请参考 https://api.aliyun.com/product/bailian
     client_config.endpoint = 'bailian.cn-beijing.aliyuncs.com'
     return bailian20231229Client(client_config)
+
+def get_category_from_index(index_id: str):
+    #to do: get category_id from index_id
+    return index_id
