@@ -4,6 +4,7 @@ from utils.log import log
 from utils.config import config
 from services.create_store import create_store, CreateStoreRequest
 from services.create_store_status import create_store_status
+from services.retrieve import retrieve, RetrieveRequest
 from server.auth import get_token, check_permission
 from server.response import SuccessResponse, FailResponse
 
@@ -27,7 +28,7 @@ async def vector_store_create(request: CreateStoreRequest, background_tasks: Bac
         return SuccessResponse(data=create_store_response)
     except Exception as e:
         trace_info = traceback.format_exc()
-        log.error(f'Exception for /vector_store/create, e: {e}, trace: {trace_info}')
+        log.error(f'Exception for /vector_store/create, request: {request}, e: {e}, trace: {trace_info}')
         return FailResponse(error=str(e))
 
 
@@ -47,5 +48,25 @@ async def get_task_status(task_id: str, token: str = Depends(
         return SuccessResponse(data=create_store_status_response)
     except Exception as e:
         trace_info = traceback.format_exc()
-        log.error(f'Exception for /vector_store/task_status, e: {e}, trace: {trace_info}')
+        log.error(f'Exception for /vector_store/task_status, task_id:{task_id} , e: {e}, trace: {trace_info}')
+        return FailResponse(error=str(e))
+
+
+# 3. 知识召回
+@store_router.post('/retrieve')
+async def vector_store_retrieve(request: RetrieveRequest, token: str = Depends(
+    get_token)):
+    """
+        查询任务状态：根据任务ID获取任务的当前状态。
+    """
+    try:
+        if not check_permission(token, request.id):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
+
+        retrieve_response = retrieve(request)
+
+        return SuccessResponse(data=retrieve_response)
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /vector_store/retrieve, request: {request}, e: {e}, trace: {trace_info}')
         return FailResponse(error=str(e))
