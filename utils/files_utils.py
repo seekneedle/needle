@@ -3,6 +3,7 @@ import os
 import shutil
 from utils.config import config
 import hashlib
+from pydantic import BaseModel
 
 class File(BaseModel):
     name: str

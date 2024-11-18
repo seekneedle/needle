@@ -50,7 +50,7 @@ def decrypt(cipher_text_hex, key_str=needle_pwd):
 if __name__ == '__main__':
     cipher_text = encrypt('needle')  # Replace it with the text you need to encrypt
     print(cipher_text)
-    plain_text = decrypt(cipher_text)
+    plain_text = decrypt("4a865afb353caa5a82fe5ed8057c4b61dc60dfa2b5ff7dc7d97957b4e2436959961ac0f545bd0bde82a8517e2543fbdf")
     print(plain_text)
 
     hash_value = sha256_encode('needle')  # Replace it with the text you need to encode

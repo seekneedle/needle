@@ -14,3 +14,6 @@ parent_category_id: 732bab7449799baeec8c7cb439f97cebd7ed0499bc649f96741d43b5b926
 
 filestore_root_dir: temp
 permission_manage: permission_manage
+
+pms_ip: 0.0.0.0
+pms_port: 8989
