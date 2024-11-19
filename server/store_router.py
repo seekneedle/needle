@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 import traceback
 
 from services.file_add import FileAddRequest
+from services.query import QueryRequest, stream_query, query
 from utils.log import log
 from utils.config import config
 from services.create_store import create_store, CreateStoreRequest
@@ -9,6 +10,7 @@ from services.create_store_status import create_store_status
 from services.retrieve import retrieve, RetrieveRequest
 from server.auth import get_token, check_permission
 from server.response import SuccessResponse, FailResponse
+from fastapi.responses import StreamingResponse
 
 store_router = APIRouter(prefix='/vector_store')
 
@@ -71,12 +73,13 @@ async def file_add(request: FileAddRequest, background_tasks: BackgroundTasks, t
         log.error(f'Exception for /vector_store/file_add, e: {e}, trace: {trace_info}')
         return FailResponse(error=str(e))
 
+
 # 4. 知识召回
 @store_router.post('/retrieve')
 async def vector_store_retrieve(request: RetrieveRequest, token: str = Depends(
     get_token)):
     """
-        查询任务状态：根据任务ID获取任务的当前状态。
+        召回知识库片段：根据检索内容召回知识库相关片段。
     """
     try:
         if not check_permission(token, request.id):
@@ -88,4 +91,42 @@ async def vector_store_retrieve(request: RetrieveRequest, token: str = Depends(
     except Exception as e:
         trace_info = traceback.format_exc()
         log.error(f'Exception for /vector_store/retrieve, request: {request}, e: {e}, trace: {trace_info}')
+        return FailResponse(error=str(e))
+
+
+# 5. 流式RAG
+@store_router.post('/stream_query')
+async def vector_store_stream_query(request: QueryRequest, token: str = Depends(
+    get_token)):
+    """
+        流式知识库查询：使用流式方法查询知识库并调用大模型总结回答。
+    """
+    try:
+        if not check_permission(token, request.id):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
+
+        return StreamingResponse(stream_query(request), media_type='application/json')
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /vector_store/stream_query, request: {request}, e: {e}, trace: {trace_info}')
+        return FailResponse(error=str(e))
+
+
+# 6. 常规RAG
+@store_router.post('/query')
+async def vector_store_query(request: QueryRequest, token: str = Depends(
+    get_token)):
+    """
+        知识库查询：查询知识库并调用大模型总结回答。
+    """
+    try:
+        if not check_permission(token, request.id):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
+
+        query_response = query(request)
+
+        return SuccessResponse(data=query_response)
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /vector_store/query, request: {request}, e: {e}, trace: {trace_info}')
         return FailResponse(error=str(e))
