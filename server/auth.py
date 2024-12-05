@@ -21,11 +21,11 @@ def get_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 
 
 # 检查操作权限
-def check_permission(token, action):
+def check_permission(token, kb_id, action):
     ip = config['pms_ip']
     port = config['pms_port']
     # 定义URL
-    url = f'http://{ip}:{port}/user/getPermission'
+    url = f'http://{ip}:{port}/user/checkPermission'
 
     # 定义headers，包括Authorization头
     headers = {
@@ -35,6 +35,7 @@ def check_permission(token, action):
 
     # 定义请求体
     data = {
+        'kb_id': kb_id,
         'action': action
     }
 

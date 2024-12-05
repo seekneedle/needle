@@ -15,6 +15,10 @@ from fastapi.responses import StreamingResponse
 store_router = APIRouter(prefix='/vector_store')
 
 PERMISSION_MANAGE = config['permission_manage']
+ACTION_QUERY = 'Q'
+ACTION_UPDATE = 'U'
+ACTION_DELETE = 'D'
+ACTION_INSERT = 'I'
 
 
 # 1. 创建知识库
@@ -25,7 +29,7 @@ async def vector_store_create(request: CreateStoreRequest, background_tasks: Bac
         创建向量知识库：支持pdf、docx、doc、txt、md文件上传，切分。
     """
     try:
-        if not check_permission(token, PERMISSION_MANAGE):
+        if not check_permission(token, PERMISSION_MANAGE, ACTION_INSERT):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
 
         create_store_response = create_store(request, background_tasks)
@@ -44,7 +48,7 @@ async def get_task_status(task_id: str, token: str = Depends(
         查询任务状态：根据任务ID获取任务的当前状态。
     """
     try:
-        if not check_permission(token, PERMISSION_MANAGE):
+        if not check_permission(token, PERMISSION_MANAGE, ACTION_INSERT):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
 
         create_store_status_response = create_store_status(task_id)
@@ -63,7 +67,7 @@ async def file_add(request: FileAddRequest, background_tasks: BackgroundTasks, t
         向知识库里添加文件：支持pdf、docx、doc、txt、md文件上传，切分。
     """
     try:
-        if not check_permission(token, PERMISSION_MANAGE):
+        if not check_permission(token, PERMISSION_MANAGE, ACTION_INSERT):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
 
         file_add_response = file_add(request, background_tasks)
@@ -82,7 +86,7 @@ async def vector_store_retrieve(request: RetrieveRequest, token: str = Depends(
         召回知识库片段：根据检索内容召回知识库相关片段。
     """
     try:
-        if not check_permission(token, request.id):
+        if not check_permission(token, request.id, ACTION_QUERY):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
 
         retrieve_response = retrieve(request)
@@ -102,7 +106,7 @@ async def vector_store_stream_query(request: QueryRequest, token: str = Depends(
         流式知识库查询：使用流式方法查询知识库并调用大模型总结回答。
     """
     try:
-        if not check_permission(token, request.id):
+        if not check_permission(token, request.id, ACTION_QUERY):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
 
         return StreamingResponse(stream_query(request), media_type='application/json')
@@ -120,7 +124,7 @@ async def vector_store_query(request: QueryRequest, token: str = Depends(
         知识库查询：查询知识库并调用大模型总结回答。
     """
     try:
-        if not check_permission(token, request.id):
+        if not check_permission(token, request.id, ACTION_QUERY):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid permission.')
 
         query_response = query(request)
