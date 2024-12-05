@@ -42,4 +42,4 @@ def check_permission(token, kb_id, action):
     # 发送POST请求
     response = requests.post(url, headers=headers, data=json.dumps(data))
 
-    return response.json()['code'] == 200
+    return response.json()['data']
