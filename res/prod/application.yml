@@ -3,6 +3,9 @@ log_level: info
 ip: 0.0.0.0
 port: 8471
 
+username: needle
+password: 09881f6ed93360a2f6ad81f435a8ca51ca4575d0f954f197ff8f7d16c6565562
+
 origins:
   - http://localhost
   - http://localhost:8080

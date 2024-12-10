@@ -1,45 +1,30 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials
 import requests
 from utils.config import config
 import json
+import base64
+from utils.security import sha256_encode
 
 app = FastAPI()
 
-# 创建一个 HTTPBearer 实例
-security = HTTPBearer()
+
+# 创建安全实例
+security = HTTPBasic()
 
 
-# 获取Authorization
-def get_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if credentials.scheme.lower() != 'bearer':
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication scheme."
-        )
-    return f"{credentials.scheme} {credentials.credentials}"
+def verify_credentials(cre_username, cre_password):
+    username = config['username']
+    password = config['password']
+    if cre_username == username and sha256_encode(cre_password) == password:
+        return True
+    return False
 
 
 # 检查操作权限
-def check_permission(token, kb_id, action):
-    ip = config['pms_ip']
-    port = config['pms_port']
-    # 定义URL
-    url = f'http://{ip}:{port}/user/checkPermission'
-
-    # 定义headers，包括Authorization头
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': token
-    }
-
-    # 定义请求体
-    data = {
-        'kb_id': kb_id,
-        'action': action
-    }
-
-    # 发送POST请求
-    response = requests.post(url, headers=headers, data=json.dumps(data))
-
-    return response.json()['data']
+def check_permission(credentials: HTTPBasicCredentials = Depends(security)):
+    if not verify_credentials(credentials.username, credentials.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials."
+        )
