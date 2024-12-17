@@ -9,6 +9,8 @@ password: 09881f6ed93360a2f6ad81f435a8ca51ca4575d0f954f197ff8f7d16c6565562
 origins:
   - http://localhost
   - http://localhost:8080
+  - http://185.199.110.153
+  - http://185.199.110.153:8080
 
 ak: d721d9bb854dcb77a0df4c182de19445bd1d9baf81bbec80aa7ba2d5b4a6ac2bfb4589b5b615d5a4293fc4beb4490472
 sk: 4a865afb353caa5a82fe5ed8057c4b61dc60dfa2b5ff7dc7d97957b4e2436959961ac0f545bd0bde82a8517e2543fbdf
