@@ -75,7 +75,7 @@ def _query(request: QueryRequest):
     return client, messages
 
 
-def stream_query(request: QueryRequest):
+async def stream_query(request: QueryRequest):
     client, messages = _query(request)
     completion = client.chat.completions.create(
         model="qwen-plus-2024-09-19",
@@ -85,7 +85,8 @@ def stream_query(request: QueryRequest):
     )
     for chunk in completion:
         if len(chunk.choices) > 0:
-            yield SuccessResponse(data=QueryResponse(content=chunk.choices[0].delta.content)).json()
+            response = SuccessResponse(data=QueryResponse(content=chunk.choices[0].delta.content)).json()
+            yield f"data: {response}\n\n"
 
 
 def query(request: QueryRequest):

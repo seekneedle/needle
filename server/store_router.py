@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 import traceback
 
 from server.auth import check_permission
@@ -11,6 +11,7 @@ from services.create_store_status import create_store_status
 from services.retrieve import retrieve, RetrieveRequest
 from server.response import SuccessResponse, FailResponse
 from fastapi.responses import StreamingResponse
+import asyncio
 
 store_router = APIRouter(prefix='/vector_store', dependencies=[Depends(check_permission)])
 
@@ -84,12 +85,17 @@ async def vector_store_retrieve(request: RetrieveRequest):
 
 # 5. 流式RAG
 @store_router.post('/stream_query')
-async def vector_store_stream_query(request: QueryRequest):
+async def vector_store_stream_query(request: Request, query_request: QueryRequest):
     """
         流式知识库查询：使用流式方法查询知识库并调用大模型总结回答。
     """
     try:
-        return StreamingResponse(stream_query(request), media_type='application/json')
+        async def event_stream():
+            async for event in stream_query(query_request):
+                if await request.is_disconnected():
+                    break
+                yield event
+        return StreamingResponse(event_stream(), media_type='text/event-stream')
     except Exception as e:
         trace_info = traceback.format_exc()
         log.error(f'Exception for /vector_store/stream_query, request: {request}, e: {e}, trace: {trace_info}')
