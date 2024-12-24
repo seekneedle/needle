@@ -10,6 +10,7 @@ from server.response import SuccessResponse
 class QueryRequest(BaseModel):
     id: str
     messages: List[Dict[str, str]]
+    temperature: Optional[float] = None
     system: Optional[str] = None
     top_k: Optional[int] = None
     rerank_top_k: Optional[int] = None
@@ -75,9 +76,14 @@ def _query(request: QueryRequest):
 
 async def stream_query(request: QueryRequest):
     client, messages = _query(request)
+    if request.temperature is not None:
+        temperature = request.temperature
+    else:
+        temperature = 1.0
     completion = client.chat.completions.create(
         model="qwen-plus-2024-09-19",
         messages=messages,
+        temperature=temperature,
         stream=True,
         stream_options={"include_usage": True}
     )
@@ -89,8 +95,13 @@ async def stream_query(request: QueryRequest):
 
 def query(request: QueryRequest):
     client, messages = _query(request)
+    if request.temperature is not None:
+        temperature = request.temperature
+    else:
+        temperature = 1.0
     completion = client.chat.completions.create(
         model="qwen-plus-2024-09-19",
+        temperature=temperature,
         messages=messages
     )
     return QueryResponse(content=completion.choices[0].message.content)
