@@ -48,7 +48,23 @@ def decrypt(cipher_text_hex, key_str=needle_pwd):
 
 
 if __name__ == '__main__':
-    cipher_text = encrypt('needle')  # Replace it with the text you need to encrypt
+    import random
+    import string
+
+
+    def generate_password(length=16):
+        # 定义密码字符集，包括字母、数字和符号
+        chars = string.ascii_letters + string.digits + '*#$@^'
+        # 从字符集中随机选择字符以生成密码
+        password = ''.join(random.choice(chars) for _ in range(length))
+        return password
+
+
+    # 生成一个长度为16的随机密码
+    random_password = generate_password()
+    print("Generated password:", random_password)
+
+    cipher_text = encrypt(random_password)  # Replace it with the text you need to encrypt
     print(cipher_text)
     plain_text = decrypt(cipher_text)
     print(plain_text)

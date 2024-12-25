@@ -1,10 +1,10 @@
 log_level: info
 
 ip: 0.0.0.0
-port: 8471
+port: 8475
 
 username: needle
-password: daf6056cba5d2c8fdd36094d648cc325522a5fc7780805897fb6358ee8781c9810ffb654ae07eedc989a2f6c998792dd
+password: 09881f6ed93360a2f6ad81f435a8ca51ca4575d0f954f197ff8f7d16c6565562
 
 origins:
   - http://localhost
