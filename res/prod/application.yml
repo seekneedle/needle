@@ -4,7 +4,7 @@ ip: 0.0.0.0
 port: 8471
 
 username: needle
-password: 4f2c9cc6d71f87b3872d323a6540f16f0f86a386c6743ab182645621053839b4
+password: 332f6077fe046894d292d85a42980ec88e0058542d21055dae4bdaa6ecba31dd
 
 origins:
   - http://localhost
