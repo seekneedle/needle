@@ -64,10 +64,10 @@ if __name__ == '__main__':
     random_password = generate_password()
     print("Generated password:", random_password)
 
-    cipher_text = encrypt(random_password)  # Replace it with the text you need to encrypt
+    cipher_text = encrypt('needle')  # Replace it with the text you need to encrypt
     print(cipher_text)
     plain_text = decrypt(cipher_text)
     print(plain_text)
 
-    hash_value = sha256_encode('needle')  # Replace it with the text you need to encode
+    hash_value = sha256_encode(random_password)  # Replace it with the text you need to encode
     print(hash_value)
