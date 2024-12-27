@@ -80,7 +80,7 @@ async def stream_query(request: QueryRequest):
     if request.temperature is not None:
         temperature = request.temperature
     else:
-        temperature = 1.0
+        temperature = 0.5
     completion = client.chat.completions.create(
         model="qwen-plus-2024-09-19",
         messages=messages,
