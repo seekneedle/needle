@@ -9,11 +9,11 @@ from utils.bailian import create_client
 from alibabacloud_bailian20231229 import models as bailian_20231229_models
 from alibabacloud_tea_util import models as util_models
 import traceback
-from data.task import TaskEntry, TaskStatus
+from data.task import CreateStoreTaskEntity, TaskStatus
 from utils.files_utils import save_file_to_index_path, calculate_md5, read_file
 import os
 import requests
-from data.store import CreateStoreEntity, CreateStoreDocumentEntity
+from data.store import StoreEntity, DocumentEntity
 from typing import List, Optional
 from utils.files_utils import File
 
@@ -33,7 +33,8 @@ class CreateStoreResponse(BaseModel):
 
 
 def _create_store(request: CreateStoreRequest, task_id: str):
-    task = TaskEntry(task_id=task_id)
+    task = CreateStoreTaskEntity(task_id=task_id, status=TaskStatus.RUNNING)
+
     task.set_status(TaskStatus.RUNNING)
     store = CreateStoreEntity(task_id=task_id)
     store.save()
