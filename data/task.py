@@ -9,12 +9,14 @@ class TaskStatus:
     PENDING = 'PENDING'
 
 
-class TaskEntry(TableModel):
+class CreateStoreTaskEntity(TableModel):
     task_id = Column(String)
     status = Column(String)
-    create_time = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
-    modify_time = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP"))
+    message = Column(String)
+    category_id = Column(String)
 
-    def set_status(self, status):
-        self.status = status
-        self.save()
+class CreateFileTaskEntity(TableModel):
+    task_id = Column(String)
+    status = Column(String)
+    message = Column(String)
+    store_id = Column(String)

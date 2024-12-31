@@ -1,6 +1,6 @@
-from sqlalchemy import create_engine, Column, Integer, String, inspect
+from sqlalchemy import create_engine, Column, Integer, String, inspect, DateTime, text
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.ext.declarative import declared_attr, DeclarativeMeta
+from sqlalchemy.ext.declarative import declared_attr
 from contextlib import contextmanager
 import traceback
 
@@ -26,16 +26,8 @@ def session_scope():
         _session.close()
 
 
-# 定义一个元类，用于在子类定义时自动创建表
-class AutoCreateTableMeta(DeclarativeMeta):
-    def __init__(cls, name, bases, dict_):
-        super(AutoCreateTableMeta, cls).__init__(name, bases, dict_)
-        if name != 'TableModel' and issubclass(cls, TableModel):
-            cls.__table__.create(bind=engine, checkfirst=True)
-
-
 # 定义一个通用的数据表类
-class TableModel(Base, metaclass=AutoCreateTableMeta):
+class TableModel(Base):
     __abstract__ = True
 
     @declared_attr
@@ -43,16 +35,9 @@ class TableModel(Base, metaclass=AutoCreateTableMeta):
         return self.__name__.lower()
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    create_time = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
+    modify_time = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP"))
 
-    @classmethod
-    def query_by_column_value(cls, column_name, value):
-        """
-        Query the database for the first entry matching a specific column value.
-        Returns the first matching instance or None if not found.
-        """
-        with session_scope() as session:
-            return session.query(cls).filter(getattr(cls, column_name) == value).first()
-        
     def load(self):
         with session_scope() as session:
             # 获取模型的所有列
@@ -94,44 +79,67 @@ class TableModel(Base, metaclass=AutoCreateTableMeta):
             session.query(self.__class__).filter_by(id=self.id).delete()
             session.commit()
 
+    def set(self, **kwargs):
+        for key, value in kwargs.items():
+            try:
+                setattr(self, key, value)
+            except Exception as e:
+                trace_info = traceback.format_exc()
+                print(f'Exception for set db, e: {e}, trace: {trace_info}')
+        self.save()
+
+    @classmethod
+    def create(cls, **kwargs):
+        instance = cls(**kwargs)
+        instance.save()
+        return instance
+
+    @classmethod
+    def query_first(cls, **kwargs):
+        instance = cls(**kwargs)
+        instance.load()
+        return instance
+
+    @classmethod
+    def query_all(cls, **kwargs):
+        instance = cls(**kwargs)
+        for ins in instance.iter():
+            yield ins
+
+
+def connect_db():
+    Base.metadata.create_all(engine)
+
 
 if __name__ == '__main__':
     class User(TableModel):
         name = Column(String)
-    
 
-    user = User(name='a')
-    user.save()
+    connect_db()
 
+    user = User.create(name='a')
     print(f'save {user.id}, name = {user.name}')
 
-    user.name = 'b'
-    user.save()
-
+    user.set(name='b')
     print(f'update {user.id}, name = {user.name}')
 
-    query_users = User()
-    for query_user in query_users.iter():
+    for query_user in User.query_all():
         print(f'query {query_user.id}, name = {query_user.name}')
 
-    get_user = User(name='b')
-    get_user.load()
+    get_user = User.query_first(name='b')
 
-    print(f'get {user.id}, name = {user.name}')
+    print(f'get {get_user.id}, name = {get_user.name}')
 
-    get_user.name = 'c'
-    get_user.save()
+    get_user.set(name='c')
 
-    print(f'update {user.id}, name = {user.name}')
+    print(f'update {get_user.id}, name = {get_user.name}')
 
-    query_users = User()
-    for query_user in query_users.iter():
+    for query_user in User.query_all():
         print(f'query {query_user.id}, name = {query_user.name}')
 
     get_user.delete()
 
-    query_users = User()
-    for query_user in query_users.iter():
-        print(f'delete {query_user.id}, name = {query_user.name}')
+    for query_user in User.query_all():
+        print(f'after delete {query_user.id}, name = {query_user.name}')
     else:
-        print(f'delete all')
+        print(f"delete all")

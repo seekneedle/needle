@@ -1,7 +1,11 @@
 import time
 import uuid
+from operator import index
+
 from pydantic import BaseModel
 from fastapi import BackgroundTasks
+
+from data.database import connect_db
 from utils.config import config
 from utils.security import decrypt
 from utils.log import log
@@ -9,15 +13,13 @@ from utils.bailian import create_client
 from alibabacloud_bailian20231229 import models as bailian_20231229_models
 from alibabacloud_tea_util import models as util_models
 import traceback
-from data.task import TaskEntry, TaskStatus
+from data.task import CreateStoreTaskEntity, TaskStatus
 from utils.files_utils import save_file_to_index_path, calculate_md5, read_file
 import os
 import requests
-from data.store import CreateStoreEntity, CreateStoreDocumentEntity
+from data.store import StoreEntity, DocumentEntity
 from typing import List, Optional
 from utils.files_utils import File
-
-
 
 
 class CreateStoreRequest(BaseModel):
@@ -33,10 +35,7 @@ class CreateStoreResponse(BaseModel):
 
 
 def _create_store(request: CreateStoreRequest, task_id: str):
-    task = TaskEntry(task_id=task_id)
-    task.set_status(TaskStatus.RUNNING)
-    store = CreateStoreEntity(task_id=task_id)
-    store.save()
+    task = CreateStoreTaskEntity.create(task_id=task_id, status=TaskStatus.RUNNING)
     workspace_id = decrypt(config['workspace_id'])
     runtime = util_models.RuntimeOptions()
     headers = {}
@@ -55,19 +54,19 @@ def _create_store(request: CreateStoreRequest, task_id: str):
         if result.status_code != 200 or not result.body.success:
             raise RuntimeError(result.body)
         category_id = result.body.data.category_id
+        store = StoreEntity.create(category_id=category_id)
+        task.set(category_id=category_id)
     except Exception as e:
         trace_info = traceback.format_exc()
         log.error(f'Exception for _create_store/add_category, task_id: {task_id},  e: {e}, trace: {trace_info}')
-        task.set_status(TaskStatus.FAILED)
-        store.message = str(e)
-        store.save()
+        task.set(status=TaskStatus.FAILED, message=str(e))
         return
     # 2. 上传文件
     if request.files:
         for file in request.files:
             # 2.1. 申请文档上传租约
             file_name = file.name
-            file_path = save_file_to_index_path(task_id, file_name, file.file_base64)
+            file_path = save_file_to_index_path(task_id, file_name, file.file_content)
             md_5 = calculate_md5(file_path)
             size_in_bytes = str(os.path.getsize(file_path))
             apply_file_upload_lease_request = bailian_20231229_models.ApplyFileUploadLeaseRequest(
@@ -88,18 +87,14 @@ def _create_store(request: CreateStoreRequest, task_id: str):
             except Exception as e:
                 trace_info = traceback.format_exc()
                 log.error(f'Exception for _create_store/add_lease, task_id: {task_id}, e: {e}, trace: {trace_info}')
-                task.set_status(TaskStatus.FAILED)
-                store.message = str(e)
-                store.save()
+                task.set(status=TaskStatus.FAILED, message=str(e))
                 return
             # 2.2. 上传文件
             file_content = read_file(file_path)
             response = requests.put(url, data=file_content, headers=upload_file_headers)
             if not response or response.status_code != 200 or not response.ok:
                 log.error('Exception for _create_store/put_file')
-                task.set_status(TaskStatus.FAILED)
-                store.message = 'Exception for _create_store/put_file'
-                store.save()
+                task.set(status=TaskStatus.FAILED, message='Exception for _create_store/put_file')
                 return
             # 2.3. 添加文档
             add_file_request = bailian_20231229_models.AddFileRequest(
@@ -111,12 +106,11 @@ def _create_store(request: CreateStoreRequest, task_id: str):
                 result = client.add_file_with_options(workspace_id, add_file_request, headers, runtime)
                 if result.status_code != 200 or not result.body.success:
                     raise RuntimeError(result.body)
+                DocumentEntity.create(category_id=category_id, doc_id=result.body.data.file_id, doc_name=file_name.split('.')[0], local_path=file_path)
             except Exception as e:
                 trace_info = traceback.format_exc()
                 log.error(f'Exception for _create_store/add_file, task_id: {task_id}, e: {e}, trace: {trace_info}')
-                task.set_status(TaskStatus.FAILED)
-                store.message = str(e)
-                store.save()
+                task.set(status=TaskStatus.FAILED, message=str(e))
                 return
     # 3. 创建知识库索引
     # 初始化参数字典
@@ -142,14 +136,11 @@ def _create_store(request: CreateStoreRequest, task_id: str):
         if result.status_code != 200 or not result.body.success:
             raise RuntimeError(result.body)
         index_id = result.body.data.id
-        store.index_id = index_id
-        store.save()
+        store.set(store_id=index_id)
     except Exception as e:
         trace_info = traceback.format_exc()
         log.error(f'Exception for _create_store/add_index, task_id: {task_id}, e: {e}, trace: {trace_info}')
-        task.set_status(TaskStatus.FAILED)
-        store.message = str(e)
-        store.save()
+        task.set(status=TaskStatus.FAILED, message=str(e))
         return
     # 4. 提交索引创建任务
     submit_index_job_request = bailian_20231229_models.SubmitIndexJobRequest(
@@ -163,9 +154,7 @@ def _create_store(request: CreateStoreRequest, task_id: str):
     except Exception as e:
         trace_info = traceback.format_exc()
         log.error(f'Exception for _create_store/submit_index, task_id: {task_id}, e: {e}, trace: {trace_info}')
-        task.set_status(TaskStatus.FAILED)
-        store.message = str(e)
-        store.save()
+        task.set(status=TaskStatus.FAILED, message=str(e))
         return
     # 5. 查询索引创建任务状态
     for i in range(10):
@@ -181,23 +170,15 @@ def _create_store(request: CreateStoreRequest, task_id: str):
         except Exception as e:
             trace_info = traceback.format_exc()
             log.error(f'Exception for _create_store/submit_index, task_id: {task_id}, e: {e}, trace: {trace_info}')
-            task.set_status(TaskStatus.FAILED)
-            store.message = str(e)
-            store.save()
+            task.set(status=TaskStatus.FAILED, message=str(e))
             return
         if status == TaskStatus.FAILED:
             log.error(f'Exception for _create_store/submit_index, task_id: {task_id}, docs: '
                       f'{result.body.data.documents}')
-            task.set_status(TaskStatus.FAILED)
-            store.message = result.body.message
-            store.save()
+            task.set(status=TaskStatus.FAILED, message=result.body.message)
             return
         if status == TaskStatus.COMPLETED:
-            task.set_status(TaskStatus.COMPLETED)
-            for document in result.body.data.documents:
-                doc = CreateStoreDocumentEntity(task_id=task_id, doc_name=document.doc_name,
-                                                doc_id=document.doc_id, status=document.status)
-                doc.save()
+            task.set(status=TaskStatus.COMPLETED, message='success')
             return
         time.sleep(6)
 
@@ -209,25 +190,24 @@ def create_store(request: CreateStoreRequest, background_tasks: BackgroundTasks)
 
 
 if __name__ == '__main__':
-    tasks = TaskEntry(task_id='aaa')
-    for task in tasks.iter():
+    connect_db()
+
+    for task in CreateStoreTaskEntity.query_all():
         task.delete()
-    stores = CreateStoreEntity(task_id='aaa')
-    for store in stores.iter():
+
+    for store in StoreEntity.query_all():
         store.delete()
-    documents = CreateStoreDocumentEntity(task_id='aaa')
-    for doc in documents.iter():
+
+    for doc in DocumentEntity.query_all():
         doc.delete()
+
     _create_store(CreateStoreRequest(name='test', files=[File(
         name='server.txt',
-        file_base64='MjAyNC0xMS0xMSAwOTo1MzoxMCw0OTkgLSBJTkZPIC0gdGVzdAoyMDI0LTExLTExIDE1OjE2OjMxLDAxMCAtIElORk8gLSB0ZXN0Cg==')]),
+        file_content=b'Test Doc')]),
                   'aaa')
-    tasks = TaskEntry(task_id='aaa')
-    for task in tasks.iter():
-        print(f'id: {task.id}, status: {task.status}, create_time: {task.create_time}, modify_time: {task.modify_time}')
-    stores = CreateStoreEntity(task_id='aaa')
-    for store in stores.iter():
-        print(f'id: {store.id}, index_id: {store.index_id}, message: {store.message}')
-    documents = CreateStoreDocumentEntity(task_id='aaa')
-    for doc in documents.iter():
-        print(f'id: {doc.id}, doc_name: {doc.doc_name}, doc_id: {doc.doc_id}, status: {doc.status}')
+    for task in CreateStoreTaskEntity.query_all():
+        print(f'task_id: {task.task_id}, category_id: {task.category_id}, status: {task.status}, create_time: {task.create_time}, modify_time: {task.modify_time}')
+    for store in StoreEntity.query_all():
+        print(f'store_id: {store.store_id}, category_id: {store.category_id}')
+    for doc in DocumentEntity.query_all():
+        print(f'category_id: {doc.category_id}, doc_name: {doc.doc_name}, doc_id: {doc.doc_id}, local_path: {doc.local_path}')

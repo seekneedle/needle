@@ -1,36 +1,24 @@
-import base64
-import os
 import shutil
+from data.store import DocumentEntity
+
 from utils.config import config
 import hashlib
 from pydantic import BaseModel
 
 class File(BaseModel):
     name: str
-    file_base64: str
-
-def file_to_base64(file_path):
-    """将文件内容转换成Base64编码的字符串"""
-    with open(file_path, 'rb') as file:  # 以二进制读模式打开文件
-        encoded_string = base64.b64encode(file.read()).decode('utf-8')  # 读取文件内容，编码，然后解码成utf-8字符串  
-    return encoded_string
+    file_content: bytes
 
 
-def base64_to_file(base64_str, file_path):
-    """将Base64编码的字符串解码并写入文件"""
-    with open(file_path, 'wb') as file:  # 以二进制写模式打开文件
-        decoded_bytes = base64.b64decode(base64_str)  # 解码Base64字符串  
-        file.write(decoded_bytes)  # 写入文件  
-
-
-def save_file_to_index_path(index_id, filename, base64):
+def save_file_to_index_path(index_id, filename, content):
     """文件流转成File，保存到index_id命名的文件夹"""
     file_path_root = os.path.join(os.path.dirname('__file__'), config['filestore_root_dir'])
     index_path = os.path.join(file_path_root, index_id)
     if not os.path.exists(index_path):
         os.makedirs(index_path)
     files_path = os.path.join(index_path, filename)
-    base64_to_file(base64, files_path)
+    with open(files_path, 'wb') as file:
+        file.write(content)
     return files_path
 
 
@@ -103,7 +91,6 @@ import os
 import requests
 import traceback
 from utils.log import log
-from data.task import TaskEntry, TaskStatus
 from alibabacloud_bailian20231229 import models as bailian_20231229_models
 
 def upload_file(client, category_id: str, workspace_id: str, task_id: str, file: File):
@@ -128,7 +115,7 @@ def upload_file(client, category_id: str, workspace_id: str, task_id: str, file:
     """
     # 1. 申请文档上传租约
     file_name = file.name
-    file_path = save_file_to_index_path(task_id, file_name, file.file_base64)
+    file_path = save_file_to_index_path(task_id, file_name, file.file_content)
     md_5 = calculate_md5(file_path)
     size_in_bytes = str(os.path.getsize(file_path))
     apply_file_upload_lease_request = bailian_20231229_models.ApplyFileUploadLeaseRequest(
@@ -166,6 +153,8 @@ def upload_file(client, category_id: str, workspace_id: str, task_id: str, file:
         result = client.add_file_with_options(workspace_id, add_file_request)
         if result.status_code != 200 or not result.body.success:
             raise RuntimeError(result.body)
+        DocumentEntity.create(category_id=category_id, doc_id=result.body.data.file_id, doc_name=file_name.split(".")[0],
+                              local_path=file_path)
     except Exception as e:
         trace_info = traceback.format_exc()
         log.error(f'Exception for upload_file/add_file, task_id: {task_id}, e: {e}, trace: {trace_info}')
@@ -175,9 +164,9 @@ def upload_file(client, category_id: str, workspace_id: str, task_id: str, file:
     
 if __name__ == '__main__':
     file_path = 'output/server.log'
-    encode_str = file_to_base64(file_path)
-    print(encode_str)
-    file_path = save_file_to_index_path('test', 'server.log', encode_str)
+    file_content = read_file(file_path)
+    print(file_content)
+    file_path = save_file_to_index_path('test', 'server.log', file_content)
     print(file_path)
     file_size = os.path.getsize(file_path)
     print(file_size)

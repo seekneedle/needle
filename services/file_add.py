@@ -8,17 +8,13 @@ from utils.log import log
 from utils.bailian import create_client
 from alibabacloud_bailian20231229 import models as bailian_20231229_models
 from alibabacloud_tea_util import models as util_models
+from utils.bailian import get_category_from_index
 import traceback
-from data.task import TaskEntry, TaskStatus
-from utils.files_utils import save_file_to_index_path, calculate_md5, read_file
-import os
-import requests
-from data.store import CreateStoreEntity, CreateStoreDocumentEntity
+from data.task import CreateFileTaskEntity, TaskStatus
+from data.store import DocumentEntity
 from typing import List, Optional
-from utils.files_utils import File
+from utils.files_utils import File, upload_file
 from contextlib import contextmanager
-
-
 
 
 class FileAddRequest(BaseModel):
@@ -37,24 +33,22 @@ def file_add(request: FileAddRequest, background_tasks: BackgroundTasks):
 
 @contextmanager
 def task_manager(task_id):
-    task = TaskEntry(task_id=task_id)
-    task.set_status(TaskStatus.RUNNING)
+    task = CreateFileTaskEntity.create(task_id=task_id, status=TaskStatus.RUNNING)
     try:
         yield task  # Yield the task object for use in the function
     except Exception as e:
-        task.set_status(TaskStatus.FAILED)
+        task.set(status=TaskStatus.FAILED)
         raise e  # Re-raise the exception after setting the status
     else:
         # Automatically set the status based on the execution results
         if task.status == TaskStatus.RUNNING:  # If still running, mark as failed
-            task.set_status(TaskStatus.FAILED)
-        else:
-            task.set_status(TaskStatus.COMPLETED)
+            task.set(status=TaskStatus.FAILED)
 
 def _file_add(request: FileAddRequest, task_id: str):
     with task_manager(task_id) as task:
         workspace_id = decrypt(config['workspace_id'])
         index_id = request.index_id
+        task.set(store_id=index_id)
         runtime = util_models.RuntimeOptions()
         headers = {}
         client = create_client()
@@ -88,7 +82,8 @@ def _file_add(request: FileAddRequest, task_id: str):
                 return  # Exit without setting status, handled by task_manager
             job_id = result.body.data.id
         except Exception as e:
-            log.error(f'Exception for _file_add/submit_index, task_id: {task_id}, e: {e}')
+            trace_info = traceback.format_exc()
+            log.error(f'Exception for _file_add/submit_index, task_id: {task_id}, e: {e}, trace info: {trace_info}')
             return  # Exit without setting status, handled by task_manager
 
         # 3. 轮询任务状态
@@ -104,13 +99,13 @@ def _file_add(request: FileAddRequest, task_id: str):
                     return  # Exit without setting status, handled by task_manager
                 status = result.body.data.status
             except Exception as e:
-                log.error(f'Exception for _file_add/submit_index, task_id: {task_id}, e: {e}')
+                trace_info = traceback.format_exc()
+                log.error(f'Exception for _file_add/submit_index, task_id: {task_id}, e: {e}, trace info: {trace_info}')
                 return  # Exit without setting status, handled by task_manager
 
             if status == TaskStatus.FAILED:
                 log.error(f'Exception for _file_add/submit_index, task_id: {task_id}, docs: {result.body.data.documents}')
                 return  # Exit without setting status, handled by task_manager
             if status == TaskStatus.COMPLETED:
-                task.set_status(TaskStatus.COMPLETED)  # Set status to COMPLETED
-                return  # Task completed successfully
+                task.set(status=TaskStatus.COMPLETED)
             time.sleep(6)

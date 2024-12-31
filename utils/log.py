@@ -1,4 +1,4 @@
-from data.database import TableModel
+from data.database import TableModel, connect_db
 from sqlalchemy import Column, Integer, String
 import logging
 import os
@@ -8,21 +8,17 @@ from utils.config import config
 
 # 定义日志模型
 class LogEntry(TableModel):
-    id = Column(Integer, primary_key=True, autoincrement=True)
     level = Column(String)
     message = Column(String)
-    timestamp = Column(String)
 
 
 # 自定义日志处理器
 class DatabaseLogHandler(logging.Handler):
     def emit(self, record):
-        log_entry = LogEntry(
+        LogEntry.create(
             level=record.levelname,
-            message=self.format(record),
-            timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            message=self.format(record)
         )
-        log_entry.save()
 
 
 # 配置日志记录
@@ -51,11 +47,12 @@ log = get_log()
 
 
 if __name__ == '__main__':
+    connect_db()
+
     log.info('test')
-    logs = LogEntry()
-    for _log in logs.iter():
-        id = _log.id
+
+    for _log in LogEntry.query_all():
         level = _log.level
         message = _log.message
-        timestamp = _log.timestamp
-        print(f'id: {id}, level: {level}, message: {message}, timestamp: {timestamp}')
+        timestamp = _log.create_time
+        print(f'level: {level}, message: {message}, timestamp: {timestamp}')

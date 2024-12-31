@@ -2,24 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, 
 import traceback
 
 from server.auth import check_permission
-from services.file_add import FileAddRequest
+from services.file_add import FileAddRequest, file_add
 from services.query import QueryRequest, stream_query, query
 from utils.log import log
-from utils.config import config
 from services.create_store import create_store, CreateStoreRequest
 from services.create_store_status import create_store_status
 from services.retrieve import retrieve, RetrieveRequest
 from server.response import SuccessResponse, FailResponse
 from fastapi.responses import StreamingResponse
-import asyncio
 
 store_router = APIRouter(prefix='/vector_store', dependencies=[Depends(check_permission)])
-
-PERMISSION_MANAGE = config['permission_manage']
-ACTION_QUERY = 'Q'
-ACTION_UPDATE = 'U'
-ACTION_DELETE = 'D'
-ACTION_INSERT = 'I'
 
 
 # 1. 创建知识库
@@ -52,9 +44,10 @@ async def get_task_status(task_id: str):
         log.error(f'Exception for /vector_store/task_status, task_id:{task_id} , e: {e}, trace: {trace_info}')
         return FailResponse(error=str(e))
 
+
 # 3. 向知识库增加文件
 @store_router.post('/file/add')
-async def file_add(request: FileAddRequest, background_tasks: BackgroundTasks):
+async def vector_store_file_add(request: FileAddRequest, background_tasks: BackgroundTasks):
     """
         向知识库里添加文件：支持pdf、docx、doc、txt、md文件上传，切分。
     """
