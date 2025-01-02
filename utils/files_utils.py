@@ -1,13 +1,21 @@
 import shutil
-from data.store import FileEntity
-
+import os
 from utils.config import config
 import hashlib
 from pydantic import BaseModel
+from typing import Optional
+
 
 class File(BaseModel):
     name: str
     file_content: bytes
+
+
+class Document(BaseModel):
+    doc_name: str
+    doc_id: str
+    status: str
+    message: Optional[str] = None
 
 
 def save_file_to_index_path(index_id, filename, content):
@@ -87,81 +95,7 @@ def read_file(file_path):
         file_content = file.read()
     return file_content
 
-import os
-import requests
-import traceback
-from utils.log import log
-from alibabacloud_bailian20231229 import models as bailian_20231229_models
 
-def upload_file(client, category_id: str, workspace_id: str, task_id: str, file: File):
-    """
-    上传文件到指定的 category 中，并将操作添加到任务用于观察中。
-
-    该函数分为三个主要步骤：
-    1. 申请文档上传租约。
-    2. 上传文件。
-    3. 添加操作到任务中。
-
-    参数:
-    - client: 用于与服务器通信的客户端对象。
-    - category_id: category的ID。
-    - workspace_id: workspace的ID。
-    - task_id: 任务的ID。
-    - file: 要上传的文件对象，包含文件名和Base64编码的内容。
-
-    返回:
-    - 成功上传并添加文档后返回 (True, FileId)。
-    - 如果任一步骤失败，则返回 (False, error_message)。
-    """
-    # 1. 申请文档上传租约
-    file_name = file.name
-    file_path = save_file_to_index_path(task_id, file_name, file.file_content)
-    md_5 = calculate_md5(file_path)
-    size_in_bytes = str(os.path.getsize(file_path))
-    apply_file_upload_lease_request = bailian_20231229_models.ApplyFileUploadLeaseRequest(
-        file_name=file_name,
-        md_5=md_5,
-        size_in_bytes=size_in_bytes
-    )
-    try:
-        result = client.apply_file_upload_lease_with_options(category_id, workspace_id,
-                                                              apply_file_upload_lease_request)
-        if result.status_code != 200 or not result.body.success:
-            raise RuntimeError(result.body)
-        lease_id = result.body.data.file_upload_lease_id
-        url = result.body.data.param.url
-        upload_file_headers = result.body.data.param.headers
-    except Exception as e:
-        trace_info = traceback.format_exc()
-        log.error(f'Exception for upload_file/add_lease, task_id: {task_id}, e: {e}, trace: {trace_info}')
-        return False, str(e)
-
-    # 2. 上传文件
-    file_content = read_file(file_path)
-    response = requests.put(url, data=file_content, headers=upload_file_headers)
-    if not response or response.status_code != 200 or not response.ok:
-        log.error('Exception for upload_file/put_file')
-        return False, 'Exception for upload_file/put_file'
-
-    # 3. 添加文档
-    add_file_request = bailian_20231229_models.AddFileRequest(
-        lease_id=lease_id,
-        parser='DASHSCOPE_DOCMIND',
-        category_id=category_id
-    )
-    try:
-        result = client.add_file_with_options(workspace_id, add_file_request)
-        if result.status_code != 200 or not result.body.success:
-            raise RuntimeError(result.body)
-        FileEntity.create(category_id=category_id, doc_id=result.body.data.file_id, doc_name=file_name.split(".")[0],
-                              local_path=file_path)
-    except Exception as e:
-        trace_info = traceback.format_exc()
-        log.error(f'Exception for upload_file/add_file, task_id: {task_id}, e: {e}, trace: {trace_info}')
-        return False, str(e)
-
-    return True, result.body.data.file_id
-    
 if __name__ == '__main__':
     file_path = 'output/server.log'
     file_content = read_file(file_path)

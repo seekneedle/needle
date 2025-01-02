@@ -2,13 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from utils.bailian import *
 import traceback
-
-
-class Document(BaseModel):
-    doc_name: str
-    doc_id: str
-    status: str
-    message: Optional[str] = None
+from utils.files_utils import Document
 
 
 class StoreStatusResponse(BaseModel):

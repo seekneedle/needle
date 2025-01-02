@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, BackgroundTasks, Request
 import traceback
 
 from server.auth import check_permission
@@ -8,6 +8,7 @@ from utils.log import log
 from services.create_store import create_store, CreateStoreRequest
 from services.create_store_status import task_status
 from services.retrieve import retrieve, RetrieveRequest
+from services.file_list import file_list
 from server.response import SuccessResponse, FailResponse
 from fastapi.responses import StreamingResponse
 
@@ -45,7 +46,25 @@ async def get_task_status(task_id: str):
         return FailResponse(error=str(e))
 
 
-# 3. 向知识库增加文件
+# 3. 查询知识库列表
+@store_router.get('/list/{name}')
+async def get_store_list(name: str):
+    """
+        根据知识库名称查询所有知识库，如果不填名称，则查询所有知识库。
+    """
+    pass
+
+
+# 4. 删除知识库
+@store_router.delete('/delete/{index_id}')
+async def delete_store(index_id: str):
+    """
+        根据id删除知识库
+    """
+    pass
+
+
+# 5. 向知识库增加文件
 @store_router.post('/file/add')
 async def vector_store_file_add(request: FileAddRequest, background_tasks: BackgroundTasks):
     """
@@ -60,7 +79,32 @@ async def vector_store_file_add(request: FileAddRequest, background_tasks: Backg
         return FailResponse(error=str(e))
 
 
-# 4. 知识召回
+# 6. 查询知识库文件列表
+@store_router.get('/file/list/{index_id}')
+async def get_file_list(index_id: str):
+    """
+        根据id查询知识库文件列表
+    """
+    try:
+        file_list_response = file_list(index_id)
+
+        return SuccessResponse(data=file_list_response)
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /file/list, index_id:{index_id} , e: {e}, trace: {trace_info}')
+        return FailResponse(error=str(e))
+
+
+# 7. 删除知识库文件
+@store_router.delete('/file/delete')
+async def delete_file():
+    """
+        根据文件id列表删除知识库文件
+    """
+    pass
+
+
+# 8. 知识召回
 @store_router.post('/retrieve')
 async def vector_store_retrieve(request: RetrieveRequest):
     """
@@ -76,7 +120,7 @@ async def vector_store_retrieve(request: RetrieveRequest):
         return FailResponse(error=str(e))
 
 
-# 5. 流式RAG
+# 9.1 流式RAG
 @store_router.post('/stream_query')
 async def vector_store_stream_query(request: Request, query_request: QueryRequest):
     """
@@ -95,7 +139,7 @@ async def vector_store_stream_query(request: Request, query_request: QueryReques
         return FailResponse(error=str(e))
 
 
-# 6. 常规RAG
+# 9.2 常规RAG
 @store_router.post('/query')
 async def vector_store_query(request: QueryRequest):
     """
