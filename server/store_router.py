@@ -6,7 +6,7 @@ from services.file_add import FileAddRequest, file_add
 from services.query import QueryRequest, stream_query, query
 from utils.log import log
 from services.create_store import create_store, CreateStoreRequest
-from services.create_store_status import create_store_status
+from services.create_store_status import task_status
 from services.retrieve import retrieve, RetrieveRequest
 from server.response import SuccessResponse, FailResponse
 from fastapi.responses import StreamingResponse
@@ -36,7 +36,7 @@ async def get_task_status(task_id: str):
         查询任务状态：根据任务ID获取任务的当前状态。
     """
     try:
-        create_store_status_response = create_store_status(task_id)
+        create_store_status_response = task_status(task_id)
 
         return SuccessResponse(data=create_store_status_response)
     except Exception as e:

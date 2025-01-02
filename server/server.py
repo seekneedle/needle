@@ -3,7 +3,6 @@ from utils.config import config
 from fastapi import FastAPI
 from server.store_router import store_router
 from fastapi.middleware.cors import CORSMiddleware
-from data.database import connect_db
 
 
 app = FastAPI()
@@ -21,7 +20,6 @@ app.add_middleware(
 
 
 def start_server():
-    connect_db()
     ip = config['ip']
     port = config['port']
     uvicorn.run(app, host=ip, port=port)

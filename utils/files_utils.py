@@ -1,5 +1,5 @@
 import shutil
-from data.store import DocumentEntity
+from data.store import FileEntity
 
 from utils.config import config
 import hashlib
@@ -153,7 +153,7 @@ def upload_file(client, category_id: str, workspace_id: str, task_id: str, file:
         result = client.add_file_with_options(workspace_id, add_file_request)
         if result.status_code != 200 or not result.body.success:
             raise RuntimeError(result.body)
-        DocumentEntity.create(category_id=category_id, doc_id=result.body.data.file_id, doc_name=file_name.split(".")[0],
+        FileEntity.create(category_id=category_id, doc_id=result.body.data.file_id, doc_name=file_name.split(".")[0],
                               local_path=file_path)
     except Exception as e:
         trace_info = traceback.format_exc()

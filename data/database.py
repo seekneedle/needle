@@ -51,6 +51,8 @@ class TableModel(Base):
                 # 更新 get_user 的所有列
                 for column in columns:
                     setattr(self, column.name, getattr(result, column.name))
+                return self
+            return None
 
     def iter(self):
         with session_scope() as session:
@@ -95,10 +97,16 @@ class TableModel(Base):
         return instance
 
     @classmethod
+    def get_or_create(cls, **kwargs):
+        instance = cls.query_first(**kwargs)
+        if instance is not None:
+            return instance
+        return cls.create(**kwargs)
+
+    @classmethod
     def query_first(cls, **kwargs):
         instance = cls(**kwargs)
-        instance.load()
-        return instance
+        return instance.load()
 
     @classmethod
     def query_all(cls, **kwargs):
