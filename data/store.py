@@ -1,5 +1,5 @@
 from data.database import TableModel
-from sqlalchemy import Column, String, Text
+from sqlalchemy import Column, String
 
 
 class StoreEntity(TableModel):
