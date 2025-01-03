@@ -54,9 +54,10 @@ def add_category(name):
 
 
 def create_index(name, category_id, chunk_size, overlap_size, separator):
+    store_name = name + '_' + config['env']
     params = {
         'sink_type': 'DEFAULT',
-        'name': name,
+        'name': store_name,
         'structure_type': 'unstructured',
         'source_type': 'DATA_CENTER_CATEGORY',
         'category_ids': [category_id]
@@ -203,3 +204,21 @@ def list_file(category_id):
         raise RuntimeError(result.body)
     all_files = result.body.data.file_list
     return all_files
+
+
+def delete_store_files(index_id, document_ids):
+    delete_index_document_request = bailian_20231229_models.DeleteIndexDocumentRequest(
+        index_id=index_id,
+        document_ids=document_ids
+    )
+    result = client.delete_index_document_with_options(workspace_id, delete_index_document_request, headers, runtime)
+    if result.status_code != 200 or not result.body.success:
+        raise RuntimeError(result.body)
+    deleted_ids = result.body.data.deleted_document
+    return deleted_ids
+
+
+def delete_file(file_id):
+    result = client.delete_file_with_options(file_id, workspace_id, headers, runtime)
+    if result.status_code != 200 or not result.body.success:
+        raise RuntimeError(result.body)

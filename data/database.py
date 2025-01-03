@@ -38,34 +38,6 @@ class TableModel(Base):
     create_time = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     modify_time = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP"))
 
-    def load(self):
-        with session_scope() as session:
-            # 获取模型的所有列
-            columns = inspect(self.__class__).columns
-            # 构建查询条件
-            filters = {column.name: getattr(self, column.name) for column in columns if
-                       getattr(self, column.name) is not None}
-            # 执行查询
-            result = session.query(self.__class__).filter_by(**filters).first()
-            if result:
-                # 更新 get_user 的所有列
-                for column in columns:
-                    setattr(self, column.name, getattr(result, column.name))
-                return self
-            return None
-
-    def iter(self):
-        with session_scope() as session:
-            # 获取模型的所有列
-            columns = inspect(self.__class__).columns
-            # 构建查询条件
-            filters = {column.name: getattr(self, column.name) for column in columns if
-                       getattr(self, column.name) is not None}
-            # 执行查询
-            results = session.query(self.__class__).filter_by(**filters).all()
-            for result in results:
-                yield result
-
     def save(self):
         with session_scope() as session:
             if self.id:
@@ -105,14 +77,18 @@ class TableModel(Base):
 
     @classmethod
     def query_first(cls, **kwargs):
-        instance = cls(**kwargs)
-        return instance.load()
+        with session_scope() as session:
+            # 执行查询
+            result = session.query(cls).filter_by(**kwargs).first()
+            return result
 
     @classmethod
     def query_all(cls, **kwargs):
-        instance = cls(**kwargs)
-        for ins in instance.iter():
-            yield ins
+        with session_scope() as session:
+            # 执行查询
+            results = session.query(cls).filter_by(**kwargs).all()
+            for result in results:
+                yield result
 
 
 def connect_db():
@@ -145,7 +121,9 @@ if __name__ == '__main__':
     for query_user in User.query_all():
         print(f'query {query_user.id}, name = {query_user.name}')
 
-    get_user.delete()
+    user1 = User.create(name="new")
+    for user in User.query_all():
+        user.delete()
 
     for query_user in User.query_all():
         print(f'after delete {query_user.id}, name = {query_user.name}')

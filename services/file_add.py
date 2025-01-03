@@ -7,7 +7,7 @@ from utils.files_utils import File
 
 
 class FileAddRequest(BaseModel):
-    index_id: str
+    id: str
     files: Optional[List[File]] = None
 
 
@@ -22,4 +22,4 @@ def file_add(request: FileAddRequest, background_tasks: BackgroundTasks):
 
 
 def _file_add(request: FileAddRequest, task_id: str):
-    add_files(task_id, request.index_id, request.files)
+    add_files(task_id, request.id, request.files)

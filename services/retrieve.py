@@ -4,7 +4,6 @@ from utils.bailian import create_client
 from alibabacloud_bailian20231229 import models as bailian_20231229_models
 from alibabacloud_tea_util import models as util_models
 from utils.config import config
-from utils.security import decrypt
 from typing import Dict, List
 
 
@@ -31,22 +30,24 @@ class RetrieveResponse(BaseModel):
 def retrieve(request: RetrieveRequest):
     client = create_client()
     if request.rerank_top_k is None:
-        enable_reranking = False
-    else:
-        enable_reranking = True
+        request.rerank_top_k = 5
+    if request.top_k is None:
+        request.top_k = 10
+    if request.sparse_top_k is None:
+        request.sparse_top_k = 10
     retrieve_request = bailian_20231229_models.RetrieveRequest(
         query=request.query,
         index_id=request.id,
-        enable_reranking=enable_reranking,
+        enable_reranking=True,
         dense_similarity_top_k=request.top_k,
         rerank_top_n=request.rerank_top_k,
-        search_filters = request.search_filters,
-        sparse_similarity_top_k = request.sparse_top_k
+        search_filters=request.search_filters,
+        sparse_similarity_top_k=request.sparse_top_k
     )
     runtime = util_models.RuntimeOptions()
     headers = {}
     # 复制代码运行请自行打印 API 的返回值
-    result = client.retrieve_with_options(decrypt(config['workspace_id']), retrieve_request, headers, runtime)
+    result = client.retrieve_with_options(config['workspace_id'], retrieve_request, headers, runtime)
     chunks = []
     for node in result.body.data.nodes:
         chunks.append(RetrieveNode(score=node.score, text=node.text, metadata=node.metadata))

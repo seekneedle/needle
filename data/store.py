@@ -3,7 +3,7 @@ from sqlalchemy import Column, String, Text
 
 
 class StoreEntity(TableModel):
-    index_id = Column(String)
+    index_id = Column(String, unique=True)
     category_id = Column(String)
 
 

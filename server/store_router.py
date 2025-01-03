@@ -9,6 +9,7 @@ from services.create_store import create_store, CreateStoreRequest
 from services.create_store_status import task_status
 from services.retrieve import retrieve, RetrieveRequest
 from services.file_list import file_list
+from services.files_delete import DeleteFilesRequest, delete_files
 from server.response import SuccessResponse, FailResponse
 from fastapi.responses import StreamingResponse
 
@@ -32,7 +33,7 @@ async def vector_store_create(request: CreateStoreRequest, background_tasks: Bac
 
 # 2. 查询任务状态
 @store_router.get('/task_status/{task_id}')
-async def get_task_status(task_id: str):
+async def vector_store_get_task_status(task_id: str):
     """
         查询任务状态：根据任务ID获取任务的当前状态。
     """
@@ -48,7 +49,7 @@ async def get_task_status(task_id: str):
 
 # 3. 查询知识库列表
 @store_router.get('/list/{name}')
-async def get_store_list(name: str):
+async def vector_store_get_store_list(name: str):
     """
         根据知识库名称查询所有知识库，如果不填名称，则查询所有知识库。
     """
@@ -56,8 +57,8 @@ async def get_store_list(name: str):
 
 
 # 4. 删除知识库
-@store_router.delete('/delete/{index_id}')
-async def delete_store(index_id: str):
+@store_router.post('/delete/{id}')
+async def vector_store_delete_store(id: str):
     """
         根据id删除知识库
     """
@@ -80,28 +81,38 @@ async def vector_store_file_add(request: FileAddRequest, background_tasks: Backg
 
 
 # 6. 查询知识库文件列表
-@store_router.get('/file/list/{index_id}')
-async def get_file_list(index_id: str):
+@store_router.get('/file/list/{id}')
+async def vector_store_get_file_list(id: str):
     """
         根据id查询知识库文件列表
     """
     try:
-        file_list_response = file_list(index_id)
+        file_list_response = file_list(id)
 
         return SuccessResponse(data=file_list_response)
     except Exception as e:
         trace_info = traceback.format_exc()
-        log.error(f'Exception for /file/list, index_id:{index_id} , e: {e}, trace: {trace_info}')
+        log.error(f'Exception for /file/list, index_id:{id} , e: {e}, trace: {trace_info}')
         return FailResponse(error=str(e))
 
 
 # 7. 删除知识库文件
-@store_router.delete('/file/delete')
-async def delete_file():
+@store_router.post('/file/delete')
+async def vector_store_delete_files(request: DeleteFilesRequest):
     """
         根据文件id列表删除知识库文件
     """
-    pass
+    """
+            根据id查询知识库文件列表
+        """
+    try:
+        files_delete_response = delete_files(request)
+
+        return SuccessResponse(data=files_delete_response)
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /file/delete, index_id:{request.id} , e: {e}, trace: {trace_info}')
+        return FailResponse(error=str(e))
 
 
 # 8. 知识召回
