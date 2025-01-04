@@ -43,9 +43,33 @@ SYSTEM = """# 角色
 
 
 def _query(request: QueryRequest):
+    client = OpenAI(
+        api_key=decrypt(config['api_key']),
+        base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
+    )
+    prompt = f'''你是一个知识库检索助手，可以根据聊天历史生成知识库检索句子。
+要求只能根据聊天历史进行总结，不允许总结超出聊天历史的内容。
+
+聊天历史是：
+{request.messages}
+
+输出：检索知识库的句子。'''
+    messages = [
+        {
+            'role': 'user',
+            'content': prompt
+        }
+    ]
+    messages = messages + request.messages
+    completion = client.chat.completions.create(
+        model="qwen-plus-2024-09-19",
+        messages=messages,
+        temperature=0.5
+    )
+    query_content = completion.choices[0].message.content
     retrieve_request = RetrieveRequest(
         id=request.id,
-        query=request.messages[-1]['content'],
+        query=query_content,
         top_k=request.top_k,
         rerank_top_k=request.rerank_top_k,
         sparse_top_k=request.sparse_top_k,
@@ -61,10 +85,6 @@ def _query(request: QueryRequest):
     if system is None:
         system = SYSTEM
     system = system.replace('${documents}', documents)
-    client = OpenAI(
-        api_key=decrypt(config['api_key']),
-        base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
-    )
     messages = [
         {
             'role': 'system',
@@ -99,7 +119,7 @@ def query(request: QueryRequest):
     if request.temperature is not None:
         temperature = request.temperature
     else:
-        temperature = 1.0
+        temperature = 0.5
     completion = client.chat.completions.create(
         model="qwen-plus-2024-09-19",
         temperature=temperature,
