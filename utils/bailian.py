@@ -35,21 +35,21 @@ client = create_client()
 def create_index(name, chunk_size, overlap_size, separator):
     store_name = name + '_' + config['env']
 
-    meta_extract_columns_0 = bailian_20231229_models.CreateIndexRequestMetaExtractColumns(
-        key='file_name',
-        value='file_name',
-        type='variable',
-        desc='文件名',
-        enable_llm=False,
-        enable_search=False
-    )
+    # meta_extract_columns_0 = bailian_20231229_models.CreateIndexRequestMetaExtractColumns(
+    #     key='file_name',
+    #     value='file_name',
+    #     type='variable',
+    #     desc='文件名',
+    #     enable_llm=False,
+    #     enable_search=False
+    # )
 
     params = {
         'sink_type': 'DEFAULT',
         'name': store_name,
         'structure_type': 'unstructured',
         'source_type': 'DATA_CENTER_CATEGORY',
-        "meta_extract_columns": [meta_extract_columns_0],
+        #"meta_extract_columns": [meta_extract_columns_0],
         "category_ids": ["cate_83ac9528cb4b45a58b7b3a54b1039978_10224804"]
     }
 
