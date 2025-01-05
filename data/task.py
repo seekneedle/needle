@@ -17,9 +17,11 @@ class TaskEntity(TableModel):
 
 
 class StoreTaskEntity(TaskEntity):
-    store_id = Column(String)
+    index_id = Column(String)
     job_id = Column(String)
 
 
 class FileTaskEntity(TaskEntity):
-    file_id = Column(String)
+    doc_id = Column(String)
+    doc_name = Column(String)
+    local_path = Column(String)

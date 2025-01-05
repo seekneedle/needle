@@ -6,7 +6,6 @@ from utils.security import decrypt
 from utils.config import config
 from utils.files_utils import save_file_to_index_path, calculate_md5, read_file
 import os
-from data.store import StoreEntity, FileEntity
 from data.task import StoreTaskEntity, FileTaskEntity, TaskStatus
 import traceback
 import requests
@@ -27,40 +26,31 @@ def create_client() -> bailian20231229Client:
     return bailian20231229Client(client_config)
 
 
-def get_category_from_index(index_id: str):
-    #to do: get category_id from index_id
-    return index_id
-
-
 workspace_id = config['workspace_id']
 runtime = util_models.RuntimeOptions()
 headers = {}
 client = create_client()
 
 
-def add_category(name):
-    category_type = 'UNSTRUCTURED'
-    parent_category_id = config['parent_category_id']
-    add_category_request = bailian_20231229_models.AddCategoryRequest(
-        parent_category_id=parent_category_id,
-        category_name=name,
-        category_type=category_type
-    )
-    result = client.add_category_with_options(workspace_id, add_category_request, headers, runtime)
-    if result.status_code != 200 or not result.body.success:
-        raise RuntimeError(result.body)
-    category_id = result.body.data.category_id
-    return category_id
-
-
-def create_index(name, category_id, chunk_size, overlap_size, separator):
+def create_index(name, chunk_size, overlap_size, separator):
     store_name = name + '_' + config['env']
+
+    meta_extract_columns_0 = bailian_20231229_models.CreateIndexRequestMetaExtractColumns(
+        key='file_name',
+        value='file_name',
+        type='variable',
+        desc='文件名',
+        enable_llm=False,
+        enable_search=False
+    )
+
     params = {
         'sink_type': 'DEFAULT',
         'name': store_name,
         'structure_type': 'unstructured',
         'source_type': 'DATA_CENTER_CATEGORY',
-        'category_ids': [category_id]
+        "meta_extract_columns": [meta_extract_columns_0],
+        "category_ids": ["cate_83ac9528cb4b45a58b7b3a54b1039978_10224804"]
     }
 
     # 动态添加可选参数
@@ -80,11 +70,13 @@ def create_index(name, category_id, chunk_size, overlap_size, separator):
     return index_id
 
 
-def update_index(index_id):
-    submit_index_job_request = bailian_20231229_models.SubmitIndexJobRequest(
-        index_id=index_id
+def update_index(index_id, file_ids):
+    submit_index_job_request = bailian_20231229_models.SubmitIndexAddDocumentsJobRequest(
+        index_id=index_id,
+        source_type='DATA_CENTER_FILE',
+        document_ids=file_ids
     )
-    result = client.submit_index_job_with_options(workspace_id, submit_index_job_request, headers, runtime)
+    result = client.submit_index_add_documents_job_with_options(workspace_id, submit_index_job_request, headers, runtime)
     if result.status_code != 200 or not result.body.success:
         raise RuntimeError(result.body)
     job_id = result.body.data.id
@@ -145,15 +137,11 @@ def add_file(category_id, lease_id):
 
 
 def add_store(task_id, name, chunk_size, overlap_size, separator):
-    task = StoreTaskEntity.create(task_id=task_id)
-    store = StoreEntity.create()
-    task.set(status=TaskStatus.RUNNING, store_id=store.id)
+    task = StoreTaskEntity.create(task_id=task_id, status=TaskStatus.RUNNING)
     try:
-        category_id = add_category(name)
-        store.set(category_id=category_id)
-        index_id = create_index(name, category_id, chunk_size, overlap_size, separator)
-        store.set(index_id=index_id)
-        return store
+        index_id = create_index(name, chunk_size, overlap_size, separator)
+        task.set(index_id=index_id)
+        return task
     except Exception as e:
         trace_info = traceback.format_exc()
         task.set(status=TaskStatus.FAILED,
@@ -163,28 +151,29 @@ def add_store(task_id, name, chunk_size, overlap_size, separator):
 
 
 def add_files(task_id, index_id, files):
-    task = StoreTaskEntity.get_or_create(task_id=task_id)
-    store = StoreEntity.query_first(index_id=index_id)
-    task.set(status=TaskStatus.RUNNING, store_id=store.id)
+    category_id = config['parent_category_id']
+    task = StoreTaskEntity.get_or_create(task_id=task_id, index_id=index_id)
+    task.set(status=TaskStatus.RUNNING)
     if files:
+        file_ids = []
         for file in files:
-            file_entity = FileEntity.create(store_id=store.id, doc_name=file.name.split('.')[0])
-            file_task = FileTaskEntity.create(task_id=task.task_id, status=TaskStatus.RUNNING, file_id=file_entity.id)
+            file_task = FileTaskEntity.create(task_id=task.task_id, status=TaskStatus.RUNNING, doc_name=file.name.split('.')[0])
             try:
-                lease_id, url, upload_file_headers, file_path = add_file_lease(task.task_id, store.category_id,
+                lease_id, url, upload_file_headers, file_path = add_file_lease(task.task_id, category_id,
                                                                                file.name, file.file_content)
-                file_entity.set(local_path=file_path)
+                file_task.set(local_path=file_path)
                 upload_file(file_path, url, upload_file_headers)
-                file_id = add_file(store.category_id, lease_id)
-                file_entity.set(doc_id=file_id)
+                file_id = add_file(category_id, lease_id)
+                file_task.set(doc_id=file_id)
+                file_ids.append(file_id)
             except Exception as e:
                 trace_info = traceback.format_exc()
                 file_task.set(status=TaskStatus.FAILED,
-                         message=f'Exception for add_files, task_id: {task.task_id},  id: {store.id}, file_name: '
+                         message=f'Exception for add_files, task_id: {task.task_id},  id: {task.index_id}, file_name: '
                                  f'{file.name}, e: {e}'
                                  f', trace: {trace_info}')
         try:
-            job_id = update_index(store.index_id)
+            job_id = update_index(task.index_id, file_ids)
             task.set(job_id=job_id)
         except Exception as e:
             trace_info = traceback.format_exc()

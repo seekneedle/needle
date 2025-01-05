@@ -3,12 +3,13 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.ext.declarative import declared_attr
 from contextlib import contextmanager
 import traceback
+from utils.config import config
 
 # 创建一个基类，用于定义表结构
 Base = declarative_base()
 
 # 创建数据库引擎和Session
-engine = create_engine('sqlite:///res/example.db', echo=False)
+engine = create_engine(config['db_url'], echo=False)
 Session = sessionmaker(bind=engine)
 
 

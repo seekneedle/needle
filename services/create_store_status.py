@@ -3,6 +3,7 @@ from typing import List, Optional
 from utils.bailian import *
 import traceback
 from utils.files_utils import Document
+from data.task import StoreTaskEntity, FileTaskEntity
 
 
 class StoreStatusResponse(BaseModel):
@@ -15,19 +16,16 @@ class StoreStatusResponse(BaseModel):
 
 def task_status(task_id):
     task = StoreTaskEntity.query_first(task_id=task_id)
-    store = StoreEntity.query_first(id=task.store_id)
     documents = []
 
-    if store and task.job_id:
+    if task.job_id:
         try:
-            result = get_index_result(store.index_id, task.job_id)
+            result = get_index_result(task.index_id, task.job_id)
             for doc in result.body.data.documents:
-                file_entity = FileEntity.query_first(store_id=store.id, doc_id=doc.doc_id)
-                file_task = FileTaskEntity.query_first(task_id=task_id, file_id=file_entity.id)
+                file_task = FileTaskEntity.query_first(task_id=task_id, doc_id=doc.doc_id)
                 file_task.set(status=doc.status, message=doc.message)
             for file_task in FileTaskEntity.query_all(task_id=task_id):
-                doc = FileEntity.query_first(id=file_task.file_id)
-                documents.append(Document(doc_name=doc.doc_name, doc_id=doc.doc_id, status=file_task.status,
+                documents.append(Document(doc_name=file_task.doc_name, doc_id=file_task.doc_id, status=file_task.status,
                                           message=file_task.message))
             task.set(status=result.body.data.status, message=result.body.message)
         except Exception as e:
@@ -35,7 +33,7 @@ def task_status(task_id):
             task.set(status=TaskStatus.FAILED,
                      message=f'Exception for task_status, task_id: {task_id}, e: {e}, trace: {trace_info}')
 
-    return StoreStatusResponse(task_id=task_id, status=task.status, message=task.message, id=store.index_id,
+    return StoreStatusResponse(task_id=task_id, status=task.status, message=task.message, id=task.index_id,
                                documents=documents)
 
 

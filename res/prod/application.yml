@@ -20,3 +20,5 @@ workspace_id: llm-y0ovfrk078g0qeib
 parent_category_id: cate_293ef56ed8c243e4b8b5e10d894aa59f_10224804
 
 filestore_root_dir: output
+
+db_url: sqlite:///res/prod/example.db
