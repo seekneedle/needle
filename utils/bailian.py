@@ -11,6 +11,9 @@ import traceback
 import requests
 
 
+MAX_PAGE_SIZE = 9999999
+
+
 def create_client() -> bailian20231229Client:
     """
     使用AK&SK初始化账号Client
@@ -187,7 +190,7 @@ def add_files(task_id, index_id, files):
 def list_file(index_id):
     list_index_documents_request = bailian_20231229_models.ListIndexDocumentsRequest(
         index_id=index_id,
-        page_size=999999
+        page_size=MAX_PAGE_SIZE
     )
     result = client.list_index_documents_with_options(workspace_id, list_index_documents_request, headers, runtime)
     if result.status_code != 200 or not result.body.success:
@@ -212,3 +215,18 @@ def delete_file(file_id):
     result = client.delete_file_with_options(file_id, workspace_id, headers, runtime)
     if result.status_code != 200 or not result.body.success:
         raise RuntimeError(result.body)
+
+
+def list_store(name):
+    params = {
+        'page_size': MAX_PAGE_SIZE
+    }
+    if name is not None:
+        params['index_name'] = name
+    list_indices_request = bailian_20231229_models.ListIndicesRequest(
+        **params
+    )
+    result = client.list_indices_with_options(workspace_id, list_indices_request, headers, runtime)
+    if result.status_code != 200 or not result.body.success:
+        raise RuntimeError(result.body)
+    return result.body.data.indices

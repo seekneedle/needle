@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, BackgroundTasks, Request, Query
 import traceback
-
+from typing import Optional
 from server.auth import check_permission
 from services.file_add import FileAddRequest, file_add
 from services.query import QueryRequest, stream_query, query
@@ -10,6 +10,7 @@ from services.create_store_status import task_status
 from services.retrieve import retrieve, RetrieveRequest
 from services.file_list import file_list
 from services.files_delete import DeleteFilesRequest, delete_files
+from services.store_list import get_store_list
 from server.response import SuccessResponse, FailResponse
 from fastapi.responses import StreamingResponse
 
@@ -48,12 +49,18 @@ async def vector_store_get_task_status(task_id: str):
 
 
 # 3. 查询知识库列表
-@store_router.get('/list/{name}')
-async def vector_store_get_store_list(name: str):
+@store_router.get('/list')
+async def vector_store_get_store_list(name: Optional[str] = Query(None)):
     """
         根据知识库名称查询所有知识库，如果不填名称，则查询所有知识库。
     """
-    pass
+    try:
+        store_list_response = get_store_list(name)
+        return SuccessResponse(data=store_list_response)
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /vector_store/list, name:{name}, e: {e}, trace: {trace_info}')
+        return FailResponse(error=str(e))
 
 
 # 4. 删除知识库
@@ -143,6 +150,7 @@ async def vector_store_stream_query(request: Request, query_request: QueryReques
                 if await request.is_disconnected():
                     break
                 yield event
+
         return StreamingResponse(event_stream(), media_type='text/event-stream')
     except Exception as e:
         trace_info = traceback.format_exc()
