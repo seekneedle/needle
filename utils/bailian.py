@@ -5,6 +5,7 @@ from alibabacloud_bailian20231229 import models as bailian_20231229_models
 from utils.security import decrypt
 from utils.config import config
 from utils.files_utils import save_file_to_index_path, calculate_md5, read_file
+from utils.log import log
 import os
 from data.task import StoreTaskEntity, FileTaskEntity, TaskStatus
 import traceback
@@ -233,3 +234,27 @@ def list_store(name):
     if result.status_code != 200 or not result.body.success:
         raise RuntimeError(result.body)
     return result.body.data.indices
+
+
+def delete_store(index_id):
+    delete_index_request = bailian_20231229_models.DeleteIndexRequest(
+        index_id=index_id
+    )
+    result = client.delete_index_with_options(workspace_id, delete_index_request, headers, runtime)
+    if result.status_code != 200 or not result.body.success:
+        raise RuntimeError(result.body)
+
+
+def delete_store_and_files(ids):
+    deleted_ids = []
+    for index_id in ids:
+        try:
+            file_ids = list_file(index_id, None)
+            delete_store(index_id)
+            deleted_ids.append(index_id)
+            delete_store_files(index_id, file_ids)
+        except Exception as e:
+            trace_info = traceback.format_exc()
+            log.info(f'Exception for delete_store_and_files, index_id: {index_id},  e: {e}, '
+                             f'trace: {trace_info}')
+    return deleted_ids
