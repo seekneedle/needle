@@ -187,11 +187,14 @@ def add_files(task_id, index_id, files):
         task.set(status=TaskStatus.COMPLETED)
 
 
-def list_file(index_id):
-    list_index_documents_request = bailian_20231229_models.ListIndexDocumentsRequest(
-        index_id=index_id,
-        page_size=MAX_PAGE_SIZE
-    )
+def list_file(index_id, file_name):
+    params = {
+        "index_id": index_id,
+        "page_size": MAX_PAGE_SIZE
+    }
+    if file_name is not None:
+        params["document_name"] = file_name
+    list_index_documents_request = bailian_20231229_models.ListIndexDocumentsRequest(**params)
     result = client.list_index_documents_with_options(workspace_id, list_index_documents_request, headers, runtime)
     if result.status_code != 200 or not result.body.success:
         raise RuntimeError(result.body)
