@@ -3,12 +3,12 @@ from pydantic import BaseModel
 from fastapi import BackgroundTasks
 from utils.bailian import *
 from typing import List, Optional
-from utils.files_utils import File
+from utils.files_utils import FileContent
 
 
 class FileAddRequest(BaseModel):
     id: str
-    files: Optional[List[File]] = None
+    files: Optional[List[FileContent]] = None
 
 
 class FileAddResponse(BaseModel):

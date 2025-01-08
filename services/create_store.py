@@ -7,7 +7,7 @@ from data.database import connect_db
 from utils.bailian import *
 from data.task import StoreTaskEntity
 from typing import List, Optional
-from utils.files_utils import File
+from utils.files_utils import FileContent
 
 
 class CreateStoreRequest(BaseModel):
@@ -15,7 +15,7 @@ class CreateStoreRequest(BaseModel):
     chunk_size: Optional[int] = None
     overlap_size: Optional[int] = None
     separator: Optional[str] = None
-    files: Optional[List[File]] = None
+    files: Optional[List[FileContent]] = None
 
 
 class CreateStoreResponse(BaseModel):
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     for _task in StoreTaskEntity.query_all():
         _task.delete()
 
-    _create_store(CreateStoreRequest(name='test', files=[File(
+    _create_store(CreateStoreRequest(name='test', files=[FileContent(
         name='server.txt',
         file_content=b'Test Doc')]),
                   'aaa')

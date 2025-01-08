@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 
-class File(BaseModel):
+class FileContent(BaseModel):
     name: str
     file_content: bytes
 

@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, BackgroundTasks, Request, Query
+from fastapi import APIRouter, Depends, BackgroundTasks, Request, Query, File, Form, UploadFile
 import traceback
-from typing import Optional
+from typing import Optional, List
 from server.auth import check_permission
 from services.file_add import FileAddRequest, file_add
 from services.query import QueryRequest, stream_query, query
 from utils.log import log
+from utils.files_utils import FileContent
 from services.create_store import create_store, CreateStoreRequest
 from services.create_store_status import task_status
 from services.retrieve import retrieve, RetrieveRequest
@@ -21,10 +22,27 @@ store_router = APIRouter(prefix='/vector_store', dependencies=[Depends(check_per
 
 # 1. 创建知识库
 @store_router.post('/create')
-async def vector_store_create(request: CreateStoreRequest, background_tasks: BackgroundTasks):
+async def vector_store_create(name: str = Form(...),
+                              chunk_size: Optional[int] = Form(None),
+                              overlap_size: Optional[int] = Form(None),
+                              separator: Optional[str] = Form(None),
+                              files: List[UploadFile] = File(...),
+                              background_tasks: BackgroundTasks=None):
     """
         创建向量知识库：支持pdf、docx、doc、txt、md文件上传，切分。
     """
+    file_list = []
+    for file in files:
+        content = await file.read()
+        file_content = FileContent(name=file.filename, file_content=content)
+        file_list.append(file_content)
+    request = CreateStoreRequest(
+        name=name,
+        chunk_size=chunk_size,
+        overlap_size=overlap_size,
+        separator=separator,
+        files=file_list
+    )
     try:
         create_store_response = create_store(request, background_tasks)
         return SuccessResponse(data=create_store_response)
@@ -83,10 +101,21 @@ async def vector_store_delete_store(request: DeleteStoreRequest):
 
 # 5. 向知识库增加文件
 @store_router.post('/file/add')
-async def vector_store_file_add(request: FileAddRequest, background_tasks: BackgroundTasks):
+async def vector_store_file_add(id: str = Form(...),
+                                files: List[UploadFile] = File(...),
+                                background_tasks: BackgroundTasks=None):
     """
         向知识库里添加文件：支持pdf、docx、doc、txt、md文件上传，切分。
     """
+    file_list = []
+    for file in files:
+        content = await file.read()
+        file_content = FileContent(name=file.filename, file_content=content)
+        file_list.append(file_content)
+    request = FileAddRequest(
+        id=id,
+        files=file_list
+    )
     try:
         file_add_response = file_add(request, background_tasks)
         return SuccessResponse(data=file_add_response)
