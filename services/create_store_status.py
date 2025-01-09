@@ -8,7 +8,7 @@ from data.task import StoreTaskEntity, FileTaskEntity
 
 class StoreStatusResponse(BaseModel):
     task_id: str
-    status: str
+    status: Optional[str] = None
     message: Optional[str] = None
     id: Optional[str] = None
     documents: Optional[List[Document]] = None
