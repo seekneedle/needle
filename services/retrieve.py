@@ -9,7 +9,7 @@ from typing import Dict, List
 
 class RetrieveRequest(BaseModel):
     id: str
-    query: str
+    query: str = None
     top_k: Optional[int] = None
     rerank_top_k: Optional[int] = None
     sparse_top_k: Optional[int] = None
