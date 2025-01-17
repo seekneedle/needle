@@ -8,7 +8,8 @@ from server.response import SuccessResponse
 
 
 class QueryRequest(BaseModel):
-    id: str
+    ids: List = []
+    id: Optional[str] = None
     messages: List[Dict[str, str]]
     temperature: Optional[float] = None
     system: Optional[str] = None
@@ -43,6 +44,9 @@ SYSTEM = """# 角色
 
 
 def _query(request: QueryRequest):
+    if request.id:
+        if request.id not in request.ids:
+            request.ids.append(request.id)
     client = OpenAI(
         api_key=decrypt(config['api_key']),
         base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
@@ -68,7 +72,7 @@ def _query(request: QueryRequest):
     )
     query_content = completion.choices[0].message.content
     retrieve_request = RetrieveRequest(
-        id=request.id,
+        ids=request.ids,
         query=query_content,
         top_k=request.top_k,
         rerank_top_k=request.rerank_top_k,
