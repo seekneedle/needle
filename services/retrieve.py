@@ -5,6 +5,8 @@ from alibabacloud_bailian20231229 import models as bailian_20231229_models
 from alibabacloud_tea_util import models as util_models
 from utils.config import config
 from typing import Dict, List
+import traceback
+from utils.log import log
 
 
 class RetrieveRequest(BaseModel):
@@ -41,19 +43,24 @@ def retrieve(request: RetrieveRequest):
         request.sparse_top_k = 10
     chunks = []
     for id in request.ids:
-        retrieve_request = bailian_20231229_models.RetrieveRequest(
-            query=request.query,
-            index_id=id,
-            enable_reranking=True,
-            dense_similarity_top_k=request.top_k,
-            rerank_top_n=request.rerank_top_k,
-            search_filters=request.search_filters,
-            sparse_similarity_top_k=request.sparse_top_k
-        )
-        runtime = util_models.RuntimeOptions()
-        headers = {}
-        # 复制代码运行请自行打印 API 的返回值
-        result = client.retrieve_with_options(config['workspace_id'], retrieve_request, headers, runtime)
-        for node in result.body.data.nodes:
-            chunks.append(RetrieveNode(score=node.score, text=node.text, metadata=node.metadata))
+        try:
+            retrieve_request = bailian_20231229_models.RetrieveRequest(
+                query=request.query,
+                index_id=id,
+                enable_reranking=True,
+                dense_similarity_top_k=request.top_k,
+                rerank_top_n=request.rerank_top_k,
+                search_filters=request.search_filters,
+                sparse_similarity_top_k=request.sparse_top_k
+            )
+            runtime = util_models.RuntimeOptions()
+            headers = {}
+            # 复制代码运行请自行打印 API 的返回值
+            result = client.retrieve_with_options(config['workspace_id'], retrieve_request, headers, runtime)
+            for node in result.body.data.nodes:
+                chunks.append(RetrieveNode(score=node.score, text=node.text, metadata=node.metadata))
+        except Exception as e:
+            trace_info = traceback.format_exc()
+            ids = str(request.ids)
+            log.error(f'Exception for retrieve {ids}, index_id:{id} , e: {e}, trace: {trace_info}')
     return RetrieveResponse(chunks=chunks)
