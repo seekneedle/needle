@@ -19,6 +19,7 @@ class RetrieveRequest(BaseModel):
     sparse_top_k: Optional[int] = None
     rerank_threshold: Optional[float] = None
     search_filters: Optional[Dict[str, str]] = None
+    min_score: Optional[float] = None
 
 
 class RetrieveNode(BaseModel):
@@ -35,6 +36,8 @@ def _retrieve(request, id):
     """封装retrieve操作为一个独立的函数"""
     client = create_client()
     chunks = []
+    if request.min_score is None:
+        request.min_score = 0.3
     try:
         retrieve_request = bailian_20231229_models.RetrieveRequest(
             query=request.query,
@@ -44,7 +47,7 @@ def _retrieve(request, id):
             rerank_top_n=request.rerank_top_k,
             search_filters=request.search_filters,
             sparse_similarity_top_k=request.sparse_top_k,
-            rerank_min_score=0.3
+            rerank_min_score=request.min_score
         )
         runtime = util_models.RuntimeOptions()
         headers = {}
