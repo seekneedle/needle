@@ -52,11 +52,12 @@ def _query(request: QueryRequest):
         api_key=decrypt(config['api_key']),
         base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
     )
+    history_messages = request.messages[-7:]
     prompt = f'''你是一个知识库检索助手，可以根据聊天历史生成知识库检索句子。
 要求只能根据聊天历史进行总结，不允许总结超出聊天历史的内容。
 
 聊天历史是：
-{request.messages}
+{history_messages}
 
 输出：检索知识库的句子。'''
     messages = [
@@ -96,7 +97,7 @@ def _query(request: QueryRequest):
             'content': system
         }
     ]
-    messages = messages + request.messages
+    messages = messages + history_messages
     return client, messages
 
 
