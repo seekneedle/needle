@@ -225,14 +225,27 @@ def list_file(index_id, file_name):
 
 
 def delete_store_files(index_id, document_ids):
-    delete_index_document_request = bailian_20231229_models.DeleteIndexDocumentRequest(
-        index_id=index_id,
-        document_ids=document_ids
-    )
-    result = client.delete_index_document_with_options(workspace_id, delete_index_document_request, headers, runtime)
-    if result.status_code != 200 or not result.body.success:
-        raise RuntimeError(result.body)
-    deleted_ids = result.body.data.deleted_document
+    BATCH_SIZE = 100
+    deleted_ids = []
+
+    # 将 document_ids 分成若干批次，每个批次最多包含 BATCH_SIZE 个文件
+    for i in range(0, len(document_ids), BATCH_SIZE):
+        batch_document_ids = document_ids[i:i + BATCH_SIZE]
+
+        delete_index_document_request = bailian_20231229_models.DeleteIndexDocumentRequest(
+            index_id=index_id,
+            document_ids=batch_document_ids
+        )
+
+        result = client.delete_index_document_with_options(workspace_id, delete_index_document_request, headers,
+                                                           runtime)
+
+        if result.status_code != 200 or not result.body.success:
+            continue
+
+        # 假设 result.body.data.deleted_document 返回的是一个列表
+        deleted_ids.extend(result.body.data.deleted_document)
+
     return deleted_ids
 
 
