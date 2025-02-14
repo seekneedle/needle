@@ -12,7 +12,7 @@ import traceback
 import requests
 
 
-MAX_PAGE_SIZE = 9999999
+MAX_PAGE_SIZE = 100
 
 
 def create_client() -> bailian20231229Client:
@@ -199,7 +199,28 @@ def list_file(index_id, file_name):
     result = client.list_index_documents_with_options(workspace_id, list_index_documents_request, headers, runtime)
     if result.status_code != 200 or not result.body.success:
         raise RuntimeError(result.body)
-    all_files = result.body.data.documents
+    total_count = result.body.data.total_count
+    total_pages = (total_count + MAX_PAGE_SIZE - 1) // MAX_PAGE_SIZE  # 向上取整
+    all_files = []
+    for page in range(1, total_pages + 1):
+        params = {
+            "index_id": index_id,
+            "page_size": MAX_PAGE_SIZE,
+            "page_number": page  # 添加页码参数
+        }
+
+        if file_name is not None:
+            params["document_name"] = file_name
+
+        list_index_documents_request = bailian_20231229_models.ListIndexDocumentsRequest(**params)
+        result = client.list_index_documents_with_options(workspace_id, list_index_documents_request, headers, runtime)
+
+        if result.status_code != 200 or not result.body.success:
+            continue
+
+        # 将当前页的数据添加到 all_files 列表中
+        all_files.extend(result.body.data.documents)
+
     return all_files
 
 
