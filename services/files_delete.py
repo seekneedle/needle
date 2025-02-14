@@ -19,7 +19,7 @@ def delete_files(request: DeleteFilesRequest):
     for i, file_id in enumerate(deleted_ids):
         try:
             delete_file(file_id)
-            if (i + 1) % 15 == 0:
+            if (i + 1) % 10 == 0:
                 time.sleep(1)
         except Exception as e:
             trace_info = traceback.format_exc()
