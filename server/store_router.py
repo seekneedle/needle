@@ -9,7 +9,7 @@ from utils.files_utils import FileContent
 from services.create_store import create_store, CreateStoreRequest
 from services.create_store_status import task_status
 from services.retrieve import retrieve, RetrieveRequest
-from services.file_list import file_list
+from services.file_list import file_list, file_list_abnormal, FileListBatchRequest, file_list_batch
 from services.files_delete import DeleteFilesRequest, delete_files
 from services.store_list import get_store_list
 from services.file_get import get_file
@@ -95,7 +95,7 @@ async def vector_store_delete_store(request: DeleteStoreRequest):
         return SuccessResponse(data=store_delete_response)
     except Exception as e:
         trace_info = traceback.format_exc()
-        log.error(f'Exception for /file/delete, index_id:{request.id} , e: {e}, trace: {trace_info}')
+        log.error(f'Exception for /delete, index_id:{request.id}, e:{e}, trace:{trace_info}')
         return FailResponse(error=str(e))
 
 
@@ -224,3 +224,36 @@ async def vector_store_query(request: QueryRequest):
         log.error(f'Exception for /vector_store/query, request: {request}, e: {e}, trace: {trace_info}')
         return FailResponse(error=str(e))
 
+
+# 6. 列出参数 id 对应的知识库里状态异常的 docs
+@store_router.get('/file/list_abnormal/{id}')
+async def vector_store_get_file_list_abnormal(id: str, file_name: Optional[str] = Query(None)):
+    """
+        根据 id 查询知识库里状态异常的文件列表
+    """
+    try:
+        abnormal_response = file_list_abnormal(id, file_name)
+
+        return SuccessResponse(data=abnormal_response)
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /file/list_abnormal, index_id:{id} , e:{e}, trace:{trace_info}')
+        return FailResponse(error=str(e))
+
+# 6. 列出知识库里多个 document 对应的 file_id 以及其他若干参数
+# 参数：index_id: 知识库 id
+# 参数：file_names: 多个 document name 的列表
+@store_router.post('/file/list_batch')
+async def vector_store_file_list_batch(request: FileListBatchRequest):
+    """
+        列出知识库里多个 document 对应的 file_id 以及其他若干参数
+    """
+    index_id = request.index_id
+    file_names = request.file_names
+    try:
+        response = file_list_batch(index_id, file_names)
+        return SuccessResponse(data=response)
+    except Exception as e:
+        trace_info = traceback.format_exc()
+        log.error(f'Exception for /file/list_batch, index_id:{index_id}, file_names:{file_names}, e:{e}, trace:{trace_info}')
+        return FailResponse(error=str(e))

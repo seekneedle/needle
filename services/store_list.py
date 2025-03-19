@@ -15,7 +15,7 @@ class StoreListResponse(BaseModel):
 
 def get_store_list(name: str = None):
     stores = []
-    all_stores = list_store(name)
+    all_stores = list_store(name) # 用名字，如 '产品检索_uat'；不能用 index_id，如 'icmp3tfyk6'
     for store in all_stores:
         if '_' in store.name:
             if config['env'] in store.name:

@@ -6,10 +6,11 @@ from utils.security import decrypt
 from utils.config import config
 from utils.files_utils import save_file_to_index_path, calculate_md5, read_file
 from utils.log import log
-import os
+import os, time
 from data.task import StoreTaskEntity, FileTaskEntity, TaskStatus
 import traceback
 import requests
+import concurrent
 
 
 MAX_PAGE_SIZE = 100
@@ -221,6 +222,44 @@ def list_file(index_id, file_name):
         # 将当前页的数据添加到 all_files 列表中
         all_files.extend(result.body.data.documents)
 
+    return all_files
+
+def list_file_batch(index_id, file_names):
+    # 据阿里百炼 API/SDK 官方文档：
+    #   查询索引下的文档列表 ListIndexDocuments
+    #   限流说明： 本接口频繁调用会被限流，频率请勿超过 15 次/秒。如遇限流，请稍后重试。
+    #   https://next.api.aliyun.com/api/bailian/2023-12-29/ListIndexDocuments?tab=DOC
+    #
+    # 本函数不应并发调用。为防限流，每调用 10 次接口，就 sleep(1)。
+    #
+    # 理论上，查询一个 file_name 可能调用多次该接口，
+    # 但实际应该极难遇到（一个 file_name 对应超过 MAX_PAGE_SIZE 个 documents）
+
+    api_cnt = 0
+    all_files = []
+    for file_name in file_names:
+        page_no = 0
+        while True:
+            page_no += 1
+            params = {
+                'index_id': index_id,
+                'page_size': MAX_PAGE_SIZE,
+                'document_name': file_name,
+                'page_number': page_no
+            }
+            request = bailian_20231229_models.ListIndexDocumentsRequest(**params)
+            result = client.list_index_documents_with_options(workspace_id, request, headers, runtime)
+            api_cnt += 1
+            if api_cnt % 10 == 0:
+                time.sleep(1)
+            if result.status_code != 200 or not result.body.success:
+                log.error(f'/vector/router/file/list_batch: list_index_document failed. params:{params}')
+                continue
+                # raise RuntimeError(result.body)
+            all_files.extend(result.body.data.documents)
+            total_count = result.body.data.total_count
+            if total_count <=  MAX_PAGE_SIZE * page_no or page_no >= 5:
+                break
     return all_files
 
 
