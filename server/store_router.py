@@ -101,12 +101,25 @@ async def vector_store_delete_store(request: DeleteStoreRequest):
 
 # 5. 向知识库增加文件
 @store_router.post('/file/add')
-async def vector_store_file_add(id: str = Form(...),
+async def vector_store_file_add(request: Request,
+                                id: str = Form(...),
                                 files: List[UploadFile] = File(...),
                                 background_tasks: BackgroundTasks=None):
     """
         向知识库里添加文件：支持pdf、docx、doc、txt、md文件上传，切分。
     """
+    client_ip = request.headers.get('x-forwarded-for')
+    if not client_ip:
+        client_ip = request.client.host if request.client else "unknown"
+    
+    # 记录请求基本信息
+    log.info(
+        f"File add request from IP: {client_ip}, "
+        f"store_id: {id}, "
+        f"file_count: {len(files)}, "
+        f"filenames: {[file.filename for file in files]}"
+    )
+    
     file_list = []
     for file in files:
         content = await file.read()
@@ -143,11 +156,23 @@ async def vector_store_get_file_list(id: str, file_name: Optional[str] = Query(N
 
 # 7. 删除知识库文件
 @store_router.post('/file/delete')
-async def vector_store_delete_files(request: DeleteFilesRequest):
+async def vector_store_delete_files(fastapi_request: Request,
+    request: DeleteFilesRequest):
     """
         根据文件id列表删除知识库文件
     """
     try:
+        client_ip = fastapi_request.headers.get('x-forwarded-for')
+        if not client_ip:
+            client_ip = fastapi_request.client.host if fastapi_request.client else "unknown"
+        
+        # 记录请求日志
+        log.info(
+            f"Delete files request from IP: {client_ip}, "
+            f"store_id: {request.id}, "
+            f"file_ids: {request.file_ids}"
+        )
+        
         files_delete_response = delete_files(request)
 
         return SuccessResponse(data=files_delete_response)
