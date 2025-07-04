@@ -16,6 +16,7 @@ from services.file_get import get_file
 from services.stores_delete import delete_store, DeleteStoreRequest
 from server.response import SuccessResponse, FailResponse
 from fastapi.responses import StreamingResponse
+from urllib.parse import unquote
 
 store_router = APIRouter(prefix='/vector_store', dependencies=[Depends(check_permission)])
 
@@ -123,7 +124,8 @@ async def vector_store_file_add(request: Request,
     file_list = []
     for file in files:
         content = await file.read()
-        file_content = FileContent(name=file.filename, file_content=content)
+        decoded_filename = unquote(file.filename, encoding='utf-8')
+        file_content = FileContent(name=decoded_filename, file_content=content)
         file_list.append(file_content)
     request = FileAddRequest(
         id=id,
