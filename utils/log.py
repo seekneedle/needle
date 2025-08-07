@@ -77,7 +77,7 @@ def get_log():
     if logging.getLogRecordFactory() is not log_record_factory:
         logging.setLogRecordFactory(log_record_factory)
 
-    log_path = os.path.join(os.path.dirname(__file__), '..', '..', config['data_dir'], 'server.log')
+    log_path = os.path.join(os.path.dirname(__file__), '..', config['data_dir'], 'server.log')
     data_dir = os.path.dirname(log_path)
 
     if not os.path.exists(data_dir):
