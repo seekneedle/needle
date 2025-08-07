@@ -52,8 +52,9 @@ async def _retrieve(request, id):
         runtime = util_models.RuntimeOptions()
         headers = {}
         result = await client.retrieve_with_options_async(config['workspace_id'], retrieve_request, headers, runtime)
-        for node in result.body.data.nodes:
-            chunks.append(RetrieveNode(score=node.score, text=node.text, metadata=node.metadata))
+        if result.body and result.body.data and result.body.data.nodes:
+            for node in result.body.data.nodes:
+                chunks.append(RetrieveNode(score=node.score, text=node.text, metadata=node.metadata))
     except Exception as e:
         trace_info = traceback.format_exc()
         ids = str(request.ids)
