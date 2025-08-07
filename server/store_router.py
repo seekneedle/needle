@@ -103,7 +103,7 @@ async def vector_store_get_store_list(name: Optional[str] = Query(None)):
         store_list_response = get_store_list(name)
         log.info(
             f"[TraceID:{trace_id}] API /vector_store/list completed. Execution time: {time.time() - start_time:.2f}s. "
-            f"Response count: {len(store_list_response)}")
+            f"Response: {store_list_response}")
         return SuccessResponse(data=store_list_response)
     except Exception as e:
         log.error(f'[TraceID:{trace_id}] Exception for /vector_store/list, name:{name}, e: {e}')
@@ -185,7 +185,7 @@ async def vector_store_get_file_list(id: str, file_name: Optional[str] = Query(N
         file_list_response = file_list(id, file_name)
         log.info(
             f"[TraceID:{trace_id}] API /vector_store/file/list completed. Execution time: {time.time() - start_time:.2f}s. "
-            f"Response count: {len(file_list_response)}")
+            f"Response count: {file_list_response}")
         return SuccessResponse(data=file_list_response)
     except Exception as e:
         log.error(f'[TraceID:{trace_id}] Exception for /file/list, index_id:{id} , e: {e}')
@@ -234,7 +234,7 @@ async def vector_store_file_get(file_id):
         file_content_response = get_file(file_id)
         log.info(
             f"[TraceID:{trace_id}] API /vector_store/file/get completed. Execution time: {time.time() - start_time:.2f}s. "
-            f"Response length: {len(file_content_response) if file_content_response else 0}")
+            f"Response: {file_content_response}")
         return SuccessResponse(data=file_content_response)
     except Exception as e:
         log.error(f'[TraceID:{trace_id}] Exception for /file/get, file_id:{file_id} , e: {e}')
@@ -255,7 +255,7 @@ async def vector_store_retrieve(request: RetrieveRequest):
         retrieve_response = await retrieve(request)
         log.info(
             f"[TraceID:{trace_id}] API /vector_store/retrieve completed. Execution time: {time.time() - start_time:.2f}s. "
-            f"Response count: {len(retrieve_response)}")
+            f"Response count: {retrieve_response}")
         return SuccessResponse(data=retrieve_response)
     except Exception as e:
         log.error(
@@ -326,7 +326,7 @@ async def vector_store_get_file_list_abnormal(id: str, file_name: Optional[str] 
         abnormal_response = file_list_abnormal(id, file_name)
         log.info(
             f"[TraceID:{trace_id}] API /vector_store/file/list_abnormal completed. Execution time: {time.time() - start_time:.2f}s. "
-            f"Response count: {len(abnormal_response)}")
+            f"Response: {abnormal_response}")
         return SuccessResponse(data=abnormal_response)
     except Exception as e:
         log.error(f'[TraceID:{trace_id}] Exception for /file/list_abnormal, index_id:{id} , e:{e}')
@@ -350,7 +350,7 @@ async def vector_store_file_list_batch(request: FileListBatchRequest):
         response = file_list_batch(index_id, file_names)
         log.info(
             f"[TraceID:{trace_id}] API /vector_store/file/list_batch completed. Execution time: {time.time() - start_time:.2f}s. "
-            f"Response count: {len(response)}")
+            f"Response: {response}")
         return SuccessResponse(data=response)
     except Exception as e:
         log.error(
