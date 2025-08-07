@@ -11,17 +11,17 @@ class TaskStatus:
 class TaskEntity(TableModel):
     __abstract__ = True
 
-    task_id = Column(String)
-    status = Column(String)
-    message = Column(String)
+    task_id = Column(String(36))
+    status = Column(String(10))
+    message = Column(String(50))
 
 
 class StoreTaskEntity(TaskEntity):
-    index_id = Column(String)
-    job_id = Column(String)
+    index_id = Column(String(10))
+    job_id = Column(String(36))
 
 
 class FileTaskEntity(TaskEntity):
-    doc_id = Column(String)
-    doc_name = Column(String)
-    local_path = Column(String)
+    doc_id = Column(String(50))
+    doc_name = Column(String(128))
+    local_path = Column(String(255))
