@@ -114,7 +114,7 @@ async def stream_query(request: QueryRequest):
         stream=True,
         stream_options={"include_usage": True}
     )
-    for chunk in completion:
+    async for chunk in completion:
         if len(chunk.choices) > 0:
             response = SuccessResponse(data=QueryResponse(content=chunk.choices[0].delta.content)).model_dump_json()
             yield f"data: {response}\n\n"
