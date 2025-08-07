@@ -207,7 +207,7 @@ async def vector_store_retrieve(request: RetrieveRequest):
         召回知识库片段：根据检索内容召回知识库相关片段。
     """
     try:
-        retrieve_response = retrieve(request)
+        retrieve_response = await retrieve(request)
 
         return SuccessResponse(data=retrieve_response)
     except Exception as e:
