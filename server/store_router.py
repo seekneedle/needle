@@ -243,7 +243,7 @@ async def vector_store_query(request: QueryRequest):
         知识库查询：查询知识库并调用大模型总结回答。
     """
     try:
-        query_response = query(request)
+        query_response = await query(request)
 
         return SuccessResponse(data=query_response)
     except Exception as e:

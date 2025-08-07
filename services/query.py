@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Dict, List, Optional
-from openai import OpenAI
+from openai import AsyncOpenAI
 from utils.security import decrypt
 from utils.config import config
 from services.retrieve import RetrieveRequest, retrieve
@@ -45,11 +45,11 @@ SYSTEM = """# 角色
         """
 
 
-def _query(request: QueryRequest):
+async def _query(request: QueryRequest):
     if request.id:
         if request.id not in request.ids:
             request.ids.append(request.id)
-    client = OpenAI(
+    client = AsyncOpenAI(
         api_key=decrypt(config['api_key']),
         base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
     )
@@ -68,10 +68,9 @@ def _query(request: QueryRequest):
         }
     ]
     messages = messages + request.messages
-    completion = client.chat.completions.create(
-        model="qwen-plus-2024-09-19",
-        messages=messages,
-        temperature=0.5
+    completion = await client.chat.completions.create(
+        model="qwen-plus-latest",
+        messages=messages
     )
     query_content = completion.choices[0].message.content
     retrieve_request = RetrieveRequest(
@@ -83,7 +82,7 @@ def _query(request: QueryRequest):
         rerank_threshold=request.rerank_threshold,
         search_filters=request.search_filters
     )
-    retrieve_response = retrieve(retrieve_request)
+    retrieve_response = await retrieve(retrieve_request)
     documents = []
     for chunk in retrieve_response.chunks:
         documents.append(chunk.text)
@@ -103,13 +102,13 @@ def _query(request: QueryRequest):
 
 
 async def stream_query(request: QueryRequest):
-    client, messages = _query(request)
+    client, messages = await _query(request)
     if request.temperature is not None:
         temperature = request.temperature
     else:
         temperature = 0.5
-    completion = client.chat.completions.create(
-        model="qwen-plus-2024-09-19",
+    completion = await client.chat.completions.create(
+        model="qwen-plus-latest",
         messages=messages,
         temperature=temperature,
         stream=True,
@@ -117,18 +116,18 @@ async def stream_query(request: QueryRequest):
     )
     for chunk in completion:
         if len(chunk.choices) > 0:
-            response = SuccessResponse(data=QueryResponse(content=chunk.choices[0].delta.content)).json()
+            response = SuccessResponse(data=QueryResponse(content=chunk.choices[0].delta.content)).model_dump_json()
             yield f"data: {response}\n\n"
 
 
-def query(request: QueryRequest):
-    client, messages = _query(request)
+async def query(request: QueryRequest):
+    client, messages = await _query(request)
     if request.temperature is not None:
         temperature = request.temperature
     else:
         temperature = 0.5
-    completion = client.chat.completions.create(
-        model="qwen-plus-2024-09-19",
+    completion = await client.chat.completions.create(
+        model="qwen-plus-latest",
         temperature=temperature,
         messages=messages
     )

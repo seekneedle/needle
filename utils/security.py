@@ -4,10 +4,10 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 import os
 
-
+env = os.getenv('ENV', 'prod')
+passwd_key = f'needle_assistant_{env}'
 # Set environment with your own password
-needle_pwd = os.getenv('needle_pwd')
-
+needle_passwd = os.getenv(passwd_key)
 
 def sha256_encode(data):
     hash_object = hashlib.sha256()
@@ -22,7 +22,7 @@ def hash_key(key_str):
     return hash_object.digest()[:32]
 
 
-def encrypt(plain_text, key_str=needle_pwd):
+def encrypt(plain_text, key_str=needle_passwd):
     key = hash_key(key_str)
     backend = default_backend()
     iv = os.urandom(16)
@@ -34,7 +34,7 @@ def encrypt(plain_text, key_str=needle_pwd):
     return (iv + encrypted_data).hex()
 
 
-def decrypt(cipher_text_hex, key_str=needle_pwd):
+def decrypt(cipher_text_hex, key_str=needle_passwd):
     key = hash_key(key_str)
     backend = default_backend()
     cipher_text = bytes.fromhex(cipher_text_hex)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     import random
     import string
 
-
+    # u ^ rk * uLxmQ7yBMJc
     def generate_password(length=16):
         # 定义密码字符集，包括字母、数字和符号
         chars = string.ascii_letters + string.digits + '*#$@^'
@@ -59,15 +59,16 @@ if __name__ == '__main__':
         password = ''.join(random.choice(chars) for _ in range(length))
         return password
 
-
-    # 生成一个长度为16的随机密码
+    #
+    # # 生成一个长度为16的随机密码
     random_password = generate_password()
     print("Generated password:", random_password)
-
-    cipher_text = encrypt('needle')  # Replace it with the text you need to encrypt
+    #
+    cipher_text = encrypt(random_password)  # Replace it with the text you need to encrypt
     print(cipher_text)
+
     plain_text = decrypt(cipher_text)
     print(plain_text)
 
-    hash_value = sha256_encode(random_password)  # Replace it with the text you need to encode
+    hash_value = sha256_encode("needle_assistant")# Replace it with the text you need to encode
     print(hash_value)

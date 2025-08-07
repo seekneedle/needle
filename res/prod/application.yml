@@ -1,10 +1,28 @@
 log_level: info
+project_name: "needle"
 
 ip: 0.0.0.0
 port: 8471
 
 username: needle
 password: 332f6077fe046894d292d85a42980ec88e0058542d21055dae4bdaa6ecba31dd
+
+data_dir: "output"
+
+database:
+  host: "172.16.0.91"
+  port: 3306
+  name: "multi_media_prod"
+  username: "travel_guide_prod"
+  password: "8337bb1ae2a5da4635df3e8666804bc9137c80fe518b109a5856582be2bd2742f10f5cc698f5d7acd54f35b3c48d1feb"
+  driver: "pymysql"
+  encoding: "utf8mb4"
+  pool_options:
+    pool_pre_ping: true
+    pool_recycle: 3600
+    connect_args:
+      charset: "utf8mb4"
+
 
 origins:
   - http://localhost
@@ -19,6 +37,4 @@ api_key: 040e4d0f21217158dbaa0d892ccc67a5a82fa0444502902d4b9ad851171f4bf106b2947
 workspace_id: llm-y0ovfrk078g0qeib
 parent_category_id: cate_293ef56ed8c243e4b8b5e10d894aa59f_10224804
 
-filestore_root_dir: output
-
-db_url: sqlite:///res/prod/example.db
+filestore_root_dir: output/files

@@ -1,10 +1,27 @@
 log_level: info
+project_name: "needle"
 
 ip: 0.0.0.0
 port: 8475
 
 username: needle
 password: 09881f6ed93360a2f6ad81f435a8ca51ca4575d0f954f197ff8f7d16c6565562
+
+data_dir: "output"
+
+database:
+  host: "rm-2zew428r99pp4a0b4.mysql.rds.aliyuncs.com"
+  port: 3306
+  name: "muiti_media_test"
+  username: "travel_guide_test"
+  password: "0a1305b80c6a57fe4c5d8f2b93c14315777583ba94315f1d6d4836739352be119fb70b4dddb0358c8c8e028ac0a25dc1"
+  driver: "pymysql"
+  encoding: "utf8mb4"
+  pool_options:
+    pool_pre_ping: true
+    pool_recycle: 3600
+    connect_args:
+      charset: "utf8mb4"
 
 origins:
   - http://localhost
@@ -19,6 +36,4 @@ api_key: 040e4d0f21217158dbaa0d892ccc67a5a82fa0444502902d4b9ad851171f4bf106b2947
 workspace_id: llm-y0ovfrk078g0qeib
 parent_category_id: cate_8b810173168b460180bb2b4e1c42e906_10224804
 
-filestore_root_dir: output
-
-db_url: sqlite:///res/uat/example.db
+filestore_root_dir: output/files
